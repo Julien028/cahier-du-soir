@@ -22,7 +22,7 @@ export const totalEtoiles = async (env, enfantId) =>
 
 // Le bilan qui sert aux badges (voir BADGES dans regles.js).
 export async function bilanBadges(env, enfantId) {
-  const [s, e, m, et, sc, pr] = await Promise.all([
+  const [s, e, m, et, sc, pr, pc, pp] = await Promise.all([
     env.DB.prepare("SELECT date, score, total FROM seances WHERE enfant_id = ?").bind(enfantId).all(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM erreurs WHERE enfant_id = ? AND corrigee = 1").bind(enfantId).first(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM missions WHERE enfant_id = ?").bind(enfantId).first(),
@@ -31,6 +31,8 @@ export async function bilanBadges(env, enfantId) {
       "SELECT COUNT(*) AS n FROM (SELECT rubrique, semaine FROM seances WHERE enfant_id = ? GROUP BY rubrique, semaine HAVING COUNT(*) >= 6)"
     ).bind(enfantId).first(),
     env.DB.prepare("SELECT COALESCE(MAX(semaine),1) AS n FROM progression WHERE enfant_id = ?").bind(enfantId).first(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM peche_chapitres WHERE enfant_id = ? AND reussi = 1").bind(enfantId).first(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM peche_prises WHERE enfant_id = ?").bind(enfantId).first(),
   ]);
   const seances = s.results;
   return {
@@ -42,6 +44,8 @@ export async function bilanBadges(env, enfantId) {
     etoiles: et,
     semainesCompletes: sc.n,
     semaineMax: pr.n,
+    chapitresPeche: pc.n,
+    prises: pp.n,
     dates: seances.map((x) => x.date),
   };
 }
@@ -88,6 +92,7 @@ export async function tableau(env, enfant, aujourdhui) {
     erreurs: { aRevoir: dues.n, enAttente: attente.n, corrigees: bilan.erreursCorrigees },
     mission: { texte: missionDuJour(aujourdhui, cycle, id), faite: !!mission },
     missions: bilan.missions,
+    peche: rubriques.includes("peche") ? { chapitres: bilan.chapitresPeche, prises: bilan.prises } : null,
     recompense: recompense ? { ...recompense, gagnees: Math.max(0, etoiles - recompense.depart) } : null,
     mots: mots.results,
     dernieres: dernieres.results,

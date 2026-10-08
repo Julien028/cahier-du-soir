@@ -126,3 +126,30 @@ CREATE TABLE IF NOT EXISTS mots (
   cree_le   TEXT NOT NULL DEFAULT (datetime('now')),
   lu_le     TEXT
 );
+
+-- La pêche, propre à chaque enfant (ajouté le 08/10/2026).
+-- Les chapitres lus et leur quiz : validé à 4 bonnes réponses sur 5.
+CREATE TABLE IF NOT EXISTS peche_chapitres (
+  enfant_id INTEGER NOT NULL REFERENCES comptes(id),
+  chapitre  INTEGER NOT NULL,          -- rang dans CHAPITRES (public/programmes/peche.js)
+  meilleur  INTEGER NOT NULL DEFAULT 0,
+  reussi    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (enfant_id, chapitre)
+);
+-- Le carnet des prises.
+CREATE TABLE IF NOT EXISTS peche_prises (
+  id        INTEGER PRIMARY KEY,
+  enfant_id INTEGER NOT NULL REFERENCES comptes(id),
+  espece    TEXT NOT NULL,
+  taille    INTEGER,                  -- en cm
+  date      TEXT NOT NULL,
+  lieu      TEXT NOT NULL DEFAULT '',
+  remis     INTEGER NOT NULL DEFAULT 1,
+  cree_le   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS peche_prises_enfant ON peche_prises (enfant_id, date);
+-- Le sac : les objets déjà cochés avant de partir (rangs dans SAC).
+CREATE TABLE IF NOT EXISTS peche_sac (
+  enfant_id INTEGER PRIMARY KEY REFERENCES comptes(id),
+  coches    TEXT NOT NULL DEFAULT '[]'
+);

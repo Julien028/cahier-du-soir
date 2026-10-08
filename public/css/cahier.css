@@ -70,3 +70,27 @@ label.titre{display:block;font-size:14px;color:var(--encre-clair);margin:12px 0 
 details.bloc{border-top:1px solid var(--seyes);padding:12px 0}
 details.bloc summary{cursor:pointer;font-weight:700}
 .cta.petit{padding:10px;font-size:16px;margin-top:10px}
+
+/* --- La pêche (reprise du carnet de pêche, aux couleurs du cahier). */
+.liste-chap{display:grid;gap:12px;margin-top:14px}
+button.chap{display:flex;gap:14px;align-items:center;text-align:left;width:100%;background:var(--craie);
+  border:1.5px solid var(--seyes-fort);border-radius:var(--r);padding:14px 16px;color:var(--encre);box-shadow:0 2px 0 var(--seyes-fort)}
+.num{flex:0 0 40px;height:40px;border-radius:50%;background:#1C5566;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:"Fraunces",serif}
+.num.fini{background:var(--juste)}
+.chap small{display:block;color:var(--encre-clair);font-size:14.5px}
+.corps p{margin:0 0 14px}.corps ul{margin:0 0 14px;padding-left:20px}.corps li{margin:5px 0}.corps h3{margin:16px 0 6px}
+.astuce{background:#EAF2F0;border-left:5px solid var(--juste);border-radius:8px;padding:12px 14px;margin:0 0 14px}
+.astuce b{display:block}
+.danger{background:#FBEDE9;border-left:5px solid var(--marge);border-radius:8px;padding:12px 14px;margin:0 0 14px}
+figure{margin:0 0 16px;background:#F7F9F9;border:1px solid var(--seyes);border-radius:10px;padding:12px}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:14px;color:var(--encre-clair);margin-top:8px;text-align:center}
+.poisson{display:flex;gap:14px;align-items:flex-start}
+.poisson svg{flex:0 0 120px;width:120px}
+@media (max-width:420px){.poisson{flex-direction:column}.poisson svg{width:160px}}
+.ligne2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.prise{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--seyes);padding:11px 0;font-size:16px}
+.prise span{color:var(--encre-clair);font-size:14.5px}
+.check{display:flex;align-items:center;gap:12px;border-top:1px solid var(--seyes);padding:11px 2px}
+.check input{width:24px;height:24px;flex:0 0 24px}
+.check.ok span{text-decoration:line-through;color:var(--encre-clair)}

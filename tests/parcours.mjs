@@ -102,3 +102,29 @@ ok(await admin.appel(`comptes/${s.id}`, "PATCH", { actif: false }), "désactivat
 assert.equal((await client().connexion(s.identifiant, s.code)).statut, 401, "compte désactivé");
 
 console.log("Parcours complet : tout est bon.");
+
+// --- La pêche : rubrique ouverte à un enfant, quiz validé (+5), prise, sac ; fermée à un autre.
+const pe = ok(await admin.appel("comptes", "POST", { role: "enfant", prenom: `Peche${suffixe}`, classe: "6e", rubriques: ["6e", "peche"] }), "enfant pêcheur");
+const pecheur = client();
+ok(await pecheur.connexion(pe.identifiant, pe.code), "connexion pêcheur");
+const q1 = ok(await pecheur.appel(`enfants/${pe.id}/peche/quiz`, "POST", { chapitre: 0, score: 3, total: 5 }), "quiz raté");
+assert.equal(q1.gain, 0);
+const q2 = ok(await pecheur.appel(`enfants/${pe.id}/peche/quiz`, "POST", { chapitre: 0, score: 4, total: 5 }), "quiz réussi");
+assert.equal(q2.gain, 5);
+const q3 = ok(await pecheur.appel(`enfants/${pe.id}/peche/quiz`, "POST", { chapitre: 0, score: 5, total: 5 }), "quiz refait");
+assert.equal(q3.gain, 0, "pas d'étoiles deux fois pour le même chapitre");
+const pr = ok(await pecheur.appel(`enfants/${pe.id}/peche/prises`, "POST", { espece: "Le gardon", taille: 18, lieu: "l'étang", remis: true }), "prise");
+assert.ok(pr.nouveauxBadges.includes("prise1"));
+ok(await pecheur.appel(`enfants/${pe.id}/peche/sac`, "PUT", { coches: [0, 2, 2] }), "sac");
+let PD = ok(await pecheur.appel(`enfants/${pe.id}/peche`), "carnet");
+assert.equal(PD.prises.length, 1); assert.deepEqual(PD.sac, [0, 2]); assert.equal(PD.chapitres[0].meilleur, 5);
+ok(await pecheur.appel(`enfants/${pe.id}/peche/prises/${PD.prises[0].id}`, "DELETE", {}), "effacer prise");
+PD = ok(await pecheur.appel(`enfants/${pe.id}/peche`), "carnet vide");
+assert.equal(PD.prises.length, 0);
+assert.equal((await pecheur.appel(`enfants/${pe.id}/seances`, "POST", { rubrique: "peche", matiere: "m", score: 1, total: 1 })).statut, 400);
+const TP = ok(await pecheur.appel(`enfants/${pe.id}`), "tableau pêcheur");
+assert.equal(TP.peche.chapitres, 1); assert.equal(TP.etoiles, 5);
+const nc2 = ok(await admin.appel(`comptes/${a.id}`, "PATCH", { code: "4826" }), "code choisi");
+const enfantA2 = client(); ok(await enfantA2.connexion(a.identifiant, "4826"), "connexion code choisi");
+assert.equal((await enfantA2.appel(`enfants/${a.id}/peche/quiz`, "POST", { chapitre: 0, score: 5, total: 5 })).statut, 400, "pêche fermée");
+console.log("Pêche : tout est bon.");

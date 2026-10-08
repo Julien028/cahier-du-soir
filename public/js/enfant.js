@@ -6,9 +6,11 @@ import { $, esc, avatar, pluriel, confettis, annonce } from "./outils.js";
 import { derouler } from "./seance.js";
 import { GRADES, PALIERS, classe } from "./regles.js";
 import { onglets, qui, deconnecter } from "./app.js";
+import { vuePeche } from "./peche.js";
 
 const programmes = {};
 async function programme(code) {
+  if (code === "peche") return null; // la pêche n'est pas un programme de classe (voir peche.js)
   if (!(code in programmes)) programmes[code] = (await import(`/programmes/${code}.js`).catch(() => null))?.programme || null;
   return programmes[code];
 }
@@ -25,15 +27,16 @@ export async function espaceEnfant(app, moi) {
     qui.innerHTML = `${avatar(T.enfant.prenom, T.enfant.couleur)}<span><b>${esc(T.enfant.prenom)}</b>${T.enfant.classe ? " · " + esc(classe(T.enfant.classe)?.nom || "") : ""}</span>
       <button class="lien" id="sortir">Changer d'enfant</button>`;
     $("#sortir").onclick = deconnecter;
-    onglets.innerHTML = [["soir", "Ce soir"], ["badges", "Mes badges"], ["programme", "Mon programme"]]
+    onglets.innerHTML = [["soir", "Ce soir"], ...(T.enfant.rubriques.includes("peche") ? [["peche", "La pêche"]] : []), ["badges", "Mes badges"], ["programme", "Mon programme"]]
       .map(([v, nom]) => `<button class="onglet" role="tab" aria-selected="${v === vue}" data-vue="${v}">${nom}</button>`).join("");
-    onglets.querySelectorAll(".onglet").forEach((b) => (b.onclick = () => { vue = b.dataset.vue; afficher(); }));
+    onglets.querySelectorAll(".onglet").forEach((b) => (b.onclick = async () => { vue = b.dataset.vue; await charger().catch(() => {}); afficher(); }));
   };
   const afficher = () => {
     entete();
     window.scrollTo(0, 0);
     if (vue === "badges") return vueBadges();
     if (vue === "programme") return vueProgramme();
+    if (vue === "peche") return vuePeche(app, moi, feter);
     return vueSoir();
   };
 
@@ -54,10 +57,14 @@ export async function espaceEnfant(app, moi) {
   // --- Ce soir.
   function vueSoir() {
     const nonLus = T.mots.filter((m) => !m.lu_le);
-    const toutFait = T.rubriques.every((r) => r.faiteAujourdhui || !programmes[r.code]);
+    const toutFait = T.rubriques.every((r) => r.code === "peche" || r.faiteAujourdhui || !programmes[r.code]);
     const finDuSoir = toutFait && T.erreurs.aRevoir === 0;
     const cartes = T.rubriques.map((r) => {
       const p = programmes[r.code];
+      if (r.code === "peche") return `<div class="carte"><h2>🎣 La pêche</h2>
+        <p class="notion">${T.peche.chapitres} chapitre${T.peche.chapitres > 1 ? "s" : ""} validé${T.peche.chapitres > 1 ? "s" : ""} sur 7 · ${T.peche.prises} prise${T.peche.prises > 1 ? "s" : ""} dans ton carnet.</p>
+        <p class="muet">Quand tu veux, pas forcément ce soir. Chaque chapitre validé : +5 ⭐.</p>
+        <button class="cta sec" id="ouvrir-peche">Ouvrir le carnet de pêche</button></div>`;
       if (!p) return `<div class="carte"><h2>${esc(nomRubrique(r.code))}</h2><p class="muet">Bientôt dans ton cahier.</p></div>`;
       if (r.faiteAujourdhui) return `<div class="carte vert"><h2>${esc(p.nom)}</h2>
         <p class="notion fait">✅ Séance du soir faite : ${r.faiteAujourdhui.score} sur ${r.faiteAujourdhui.total}.</p>
@@ -100,6 +107,7 @@ export async function espaceEnfant(app, moi) {
       </div></div>`;
     app.querySelectorAll("[data-seance]").forEach((b) => (b.onclick = () => seance(b.dataset.seance)));
     if ($("#erreurs")) $("#erreurs").onclick = revoirErreurs;
+    if ($("#ouvrir-peche")) $("#ouvrir-peche").onclick = () => { vue = "peche"; afficher(); };
     if ($("#mission")) $("#mission").onclick = async () => {
       const g = await api(`enfants/${moi.id}/mission`, { methode: "POST", corps: {} }).catch((e) => alert(e.message));
       if (g) await feter(g);
@@ -159,13 +167,12 @@ export async function espaceEnfant(app, moi) {
   }
 
   // Les annonces après un gain : nouveau grade, puis chaque nouveau badge.
-  async function feter(g, sansRechargement = false) {
+  async function feter(g) {
     if (g.nouveauGrade) { confettis(120); await annonce({ icone: "🎖️", titre: `Tu deviens ${g.nouveauGrade} !`, texte: "Tu montes en grade. Continue comme ça !" }); }
     for (const code of g.nouveauxBadges || []) {
       const b = (T?.badges || []).find((x) => x.code === code);
       await annonce({ icone: b?.icone || "🏅", titre: `Nouveau badge : ${b?.nom || code}`, texte: b?.texte || "" });
     }
-    if (!sansRechargement) return;
   }
 
   // --- Mes badges et l'échelle des grades.

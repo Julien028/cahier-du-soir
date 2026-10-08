@@ -36,7 +36,7 @@ export async function onRequest(contexte) {
     case "POST seances": {
       if (!lui) return erreur(403, "Seul l'enfant fait sa séance.");
       const rubrique = String(corps.rubrique || "");
-      if (!rubriques.includes(rubrique)) return erreur(400, "Rubrique inconnue.");
+      if (!rubriques.includes(rubrique) || rubrique === "peche") return erreur(400, "Rubrique inconnue.");
       const score = Number(corps.score), total = Number(corps.total);
       if (!Number.isInteger(score) || !Number.isInteger(total) || total < 1 || total > 20 || score < 0 || score > total) return erreur(400, "Résultat illisible.");
       const deja = await env.DB.prepare("SELECT 1 FROM seances WHERE enfant_id = ? AND rubrique = ? AND date = ? AND importe = 0")
@@ -113,7 +113,7 @@ export async function onRequest(contexte) {
       if (!adulte) return erreur(403, "Réservé aux parents.");
       const rubrique = String(corps.rubrique || "");
       const semaine = Number(corps.semaine), j = Number(corps.jour);
-      if (!rubriques.includes(rubrique)) return erreur(400, "Rubrique inconnue.");
+      if (!rubriques.includes(rubrique) || rubrique === "peche") return erreur(400, "Rubrique inconnue.");
       if (!Number.isInteger(semaine) || semaine < 1 || semaine > 36 || !Number.isInteger(j) || j < 0 || j > 5) return erreur(400, "Semaine ou séance illisible.");
       await env.DB.batch([
         env.DB.prepare(`INSERT INTO progression (enfant_id, rubrique, semaine, jour) VALUES (?,?,?,?)
@@ -152,6 +152,68 @@ export async function onRequest(contexte) {
       const texte = String(corps.texte || "").trim().slice(0, 500);
       if (!texte) return erreur(400, "Le mot est vide.");
       await env.DB.prepare("INSERT INTO mots (enfant_id, auteur, texte) VALUES (?,?,?)").bind(enfant.id, session.prenom, texte).run();
+      return json({ ok: true });
+    }
+
+    // --- La pêche : chapitres validés, carnet des prises, sac.
+    case "GET peche": {
+      const [c, p, s] = await Promise.all([
+        env.DB.prepare("SELECT chapitre, meilleur, reussi FROM peche_chapitres WHERE enfant_id = ?").bind(enfant.id).all(),
+        env.DB.prepare("SELECT id, espece, taille, date, lieu, remis FROM peche_prises WHERE enfant_id = ? ORDER BY date DESC, id DESC").bind(enfant.id).all(),
+        env.DB.prepare("SELECT coches FROM peche_sac WHERE enfant_id = ?").bind(enfant.id).first(),
+      ]);
+      return json({
+        chapitres: c.results.map((x) => ({ ...x, reussi: !!x.reussi })),
+        prises: p.results.map((x) => ({ ...x, remis: !!x.remis })),
+        sac: JSON.parse(s?.coches || "[]"),
+      });
+    }
+
+    case "POST peche/quiz": {
+      if (!lui) return erreur(403, "Seul l'enfant fait ses quiz.");
+      if (!rubriques.includes("peche")) return erreur(400, "La pêche n'est pas ouverte.");
+      const chapitre = Number(corps.chapitre), score = Number(corps.score), total = Number(corps.total);
+      if (!Number.isInteger(chapitre) || chapitre < 0 || chapitre > 50 || !Number.isInteger(score) || !Number.isInteger(total) || total < 1 || score < 0 || score > total) return erreur(400, "Résultat illisible.");
+      const avant = await env.DB.prepare("SELECT reussi FROM peche_chapitres WHERE enfant_id = ? AND chapitre = ?").bind(enfant.id, chapitre).first();
+      const reussi = score >= Math.ceil(total * 0.8);
+      const ordres = [env.DB.prepare(`INSERT INTO peche_chapitres (enfant_id, chapitre, meilleur, reussi) VALUES (?,?,?,?)
+        ON CONFLICT(enfant_id, chapitre) DO UPDATE SET meilleur = MAX(meilleur, excluded.meilleur), reussi = MAX(reussi, excluded.reussi)`)
+        .bind(enfant.id, chapitre, score, reussi ? 1 : 0)];
+      if (!reussi || avant?.reussi) { await env.DB.batch(ordres); return json({ gain: 0, reussi }); }
+      const badgesAvant = badgesGagnes(await bilanBadges(env, enfant.id));
+      const totalAvant = await totalEtoiles(env, enfant.id);
+      ordres.push(env.DB.prepare("INSERT INTO etoiles (enfant_id, date, nombre, raison) VALUES (?,?,?,?)").bind(enfant.id, jour, GAINS.chapitrePeche, "peche_chapitre"));
+      await env.DB.batch(ordres);
+      return json({ ...(await apresGain(env, enfant, badgesAvant, totalAvant, GAINS.chapitrePeche)), reussi });
+    }
+
+    case "POST peche/prises": {
+      if (!lui) return erreur(403, "Seul l'enfant remplit son carnet.");
+      if (!rubriques.includes("peche")) return erreur(400, "La pêche n'est pas ouverte.");
+      const espece = String(corps.espece || "").trim().slice(0, 60);
+      const taille = corps.taille === "" || corps.taille == null ? null : Number(corps.taille);
+      const date = String(corps.date || jour);
+      if (!espece) return erreur(400, "Quel poisson ?");
+      if (taille !== null && (!Number.isInteger(taille) || taille < 1 || taille > 300)) return erreur(400, "La taille : un nombre de centimètres.");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > jour) return erreur(400, "Date illisible.");
+      const badgesAvant = badgesGagnes(await bilanBadges(env, enfant.id));
+      const totalAvant = await totalEtoiles(env, enfant.id);
+      await env.DB.prepare("INSERT INTO peche_prises (enfant_id, espece, taille, date, lieu, remis) VALUES (?,?,?,?,?,?)")
+        .bind(enfant.id, espece, taille, date, String(corps.lieu || "").trim().slice(0, 80), corps.remis === false ? 0 : 1).run();
+      return json(await apresGain(env, enfant, badgesAvant, totalAvant, 0));
+    }
+
+    case "DELETE peche/prises/:n": {
+      if (!lui) return erreur(403, "Seul l'enfant remplit son carnet.");
+      await env.DB.prepare("DELETE FROM peche_prises WHERE id = ? AND enfant_id = ?").bind(Number(chemin[3]), enfant.id).run();
+      return json({ ok: true });
+    }
+
+    case "PUT peche/sac": {
+      if (!lui) return erreur(403, "Seul l'enfant prépare son sac.");
+      const coches = [...new Set((Array.isArray(corps.coches) ? corps.coches : []).map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n < 100))];
+      await env.DB.prepare("INSERT INTO peche_sac (enfant_id, coches) VALUES (?,?) ON CONFLICT(enfant_id) DO UPDATE SET coches = excluded.coches")
+        .bind(enfant.id, JSON.stringify(coches)).run();
       return json({ ok: true });
     }
 

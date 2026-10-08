@@ -11,7 +11,6 @@
     "db:export": "wrangler d1 export cahier-du-soir --remote --output=sauvegardes/export.sql",
     "deploy": "wrangler pages deploy public --project-name cahier-du-soir --branch master --commit-dirty=true",
     "compte": "node scripts/creer-compte.mjs",
-    "programmes": "node scripts/extraire-programmes.mjs",
     "test": "node --test \"tests/*.test.mjs\""
   },
   "devDependencies": {

@@ -15,6 +15,8 @@ export const CLASSES = [
 ];
 // Les rubriques dont le programme existe déjà sur le site.
 export const RUBRIQUES_PRETES = ["ce2", "6e"];
+// Les rubriques qui ne sont pas une classe : lues quand on veut, sans séance du soir.
+export const RUBRIQUES_LIBRES = [{ code: "peche", nom: "La pêche" }];
 export const classe = (code) => CLASSES.find((c) => c.code === code);
 export const cycleDe = (code) => classe(code)?.cycle || "primaire";
 
@@ -24,6 +26,7 @@ export const GAINS = {
   sansFaute: 3,        // bonus si tout est juste
   erreurCorrigee: 2,   // une question du carnet des erreurs enfin réussie
   mission: 2,          // la mission sans écran du jour, faite
+  chapitrePeche: 5,    // un chapitre de pêche validé (quiz réussi), la première fois
 };
 export const etoilesSeance = (score, total) =>
   score * GAINS.bonneReponse + (total > 0 && score === total ? GAINS.sansFaute : 0);
@@ -96,6 +99,9 @@ export const BADGES = [
   { code: "mission10", nom: "Aventurier", texte: "Faire 10 missions sans écran", icone: "🧭", f: (b) => b.missions >= 10 },
   { code: "semaine", nom: "Semaine complète", texte: "Finir les 6 séances d'une semaine", icone: "📅", f: (b) => b.semainesCompletes >= 1 },
   { code: "periode", nom: "Une période de faite", texte: "Atteindre la semaine 8", icone: "🏁", f: (b) => b.semaineMax >= 8 },
+  { code: "prise1", nom: "Première prise", texte: "Noter un poisson dans son carnet de pêche", icone: "🎣", f: (b) => b.prises >= 1 },
+  { code: "peche3", nom: "Apprenti pêcheur", texte: "Valider 3 chapitres de pêche", icone: "🐟", f: (b) => b.chapitresPeche >= 3 },
+  { code: "peche7", nom: "Pêcheur confirmé", texte: "Valider les 7 chapitres de pêche", icone: "🐋", f: (b) => b.chapitresPeche >= 7 },
   { code: "etoiles100", nom: "100 étoiles", texte: "Gagner 100 étoiles", icone: "⭐", f: (b) => b.etoiles >= 100 },
   { code: "etoiles500", nom: "500 étoiles", texte: "Gagner 500 étoiles", icone: "🌟", f: (b) => b.etoiles >= 500 },
   { code: "annee", nom: "L'année entière", texte: "Atteindre la semaine 36", icone: "🏆", f: (b) => b.semaineMax >= 36 },

@@ -8,6 +8,7 @@ import { nomRubrique } from "./enfant.js";
 
 const programmes = {};
 async function programme(code) {
+  if (code === "peche") return null;
   if (!(code in programmes)) programmes[code] = (await import(`/programmes/${code}.js`).catch(() => null))?.programme || null;
   return programmes[code];
 }
@@ -47,11 +48,12 @@ export function espaceAdulte(app, moi) {
     }
     const tableaux = await Promise.all(m.enfants.map((e) => api(`enfants/${e.id}`)));
     app.innerHTML = `<div class="liste-enfants">${tableaux.map((T) => {
-      const faites = T.rubriques.filter((r) => r.faiteAujourdhui).length;
+      const classes = T.rubriques.filter((r) => r.code !== "peche");
+      const faites = classes.filter((r) => r.faiteAujourdhui).length;
       return `<button class="enfant-ligne" data-id="${T.enfant.id}">${avatar(T.enfant.prenom, T.enfant.couleur, true)}
         <span class="grow"><b style="font-size:19px">${esc(T.enfant.prenom)}</b> <span class="muet">${esc(classe(T.enfant.classe)?.nom || "")}${T.enfant.age ? " · " + T.enfant.age + " ans" : ""}</span><br>
         <span class="petit">${esc(T.grade.nom)} · ⭐ ${T.etoiles} · 🔥 ${T.serie}</span><br>
-        <span class="petit ${faites === T.rubriques.length ? "fait" : "muet"}">Ce soir : ${faites === T.rubriques.length ? "✅ séance faite" : faites ? `${faites} séance sur ${T.rubriques.length}` : "pas encore fait"}${T.mission.faite ? " · 🌳 mission faite" : ""}</span></span>
+        <span class="petit ${faites === classes.length ? "fait" : "muet"}">Ce soir : ${!classes.length ? "pas de séance du soir" : faites === classes.length ? "✅ séance faite" : faites ? `${faites} séance sur ${classes.length}` : "pas encore fait"}${T.mission.faite ? " · 🌳 mission faite" : ""}</span></span>
         <span aria-hidden="true">›</span></button>`;
     }).join("")}</div>`;
     app.querySelectorAll(".enfant-ligne").forEach((b) => (b.onclick = () => { vue = "fiche"; afficher(Number(b.dataset.id)); }));
@@ -76,9 +78,10 @@ export function espaceAdulte(app, moi) {
         </div></div>
 
       <div class="carte"><h3>Ce soir</h3>
-        ${T.rubriques.map((x) => `<p class="${x.faiteAujourdhui ? "fait" : "muet"}">${esc(nomRubrique(x.code))} :
+        ${T.rubriques.filter((x) => x.code !== "peche").map((x) => `<p class="${x.faiteAujourdhui ? "fait" : "muet"}">${esc(nomRubrique(x.code))} :
           ${x.faiteAujourdhui ? `✅ séance du soir faite (${x.faiteAujourdhui.score}/${x.faiteAujourdhui.total}). Prochaine :` : "séance du soir pas encore faite :"}
           semaine ${x.semaine}, ${esc(programmes[x.code]?.JOURS[x.jour]?.nom || "")}.</p>`).join("")}
+        ${T.peche ? `<p class="muet">🎣 Pêche : ${T.peche.chapitres} chapitre(s) validé(s) sur 7, ${T.peche.prises} prise(s) dans le carnet.</p>` : ""}
         <p class="${T.mission.faite ? "fait" : "muet"}">🌳 Mission : ${esc(T.mission.texte)} ${T.mission.faite ? "— ✅ faite" : ""}</p>
         <p class="muet">🔍 Carnet des erreurs : ${pluriel(T.erreurs.aRevoir, "à revoir aujourd'hui", "à revoir aujourd'hui")}, ${T.erreurs.enAttente} en attente, ${T.erreurs.corrigees} corrigées.</p></div>
 
@@ -153,7 +156,7 @@ export function espaceAdulte(app, moi) {
     const enfants = comptes.filter((c) => c.role === "enfant"), parents = comptes.filter((c) => c.role === "parent");
     const nomDe = (id) => comptes.find((c) => c.id === id)?.prenom || "?";
     const casesRubriques = (choisies = []) => `<div class="cases">${RUBRIQUES_PRETES.map((r) => `<label><input type="checkbox" name="rub" value="${r}"${choisies.includes(r) ? " checked" : ""}> ${esc(nomRubrique(r))}</label>`).join("")}
-      <label class="muet"><input type="checkbox" disabled> Pêche (bientôt)</label></div>`;
+      <label><input type="checkbox" name="rub" value="peche"${choisies.includes("peche") ? " checked" : ""}> La pêche</label></div>`;
     const choixClasse = (sel) => `<select class="mini" name="classe">${CLASSES.map((c) => `<option value="${c.code}"${c.code === sel ? " selected" : ""}>${c.nom}</option>`).join("")}</select>`;
     const cases = (liste, nom, choisis = []) => liste.length ? `<div class="cases">${liste.map((c) => `<label><input type="checkbox" name="${nom}" value="${c.id}"${choisis.includes(c.id) ? " checked" : ""}> ${esc(c.prenom)} ${esc(c.nom)}</label>`).join("")}</div>` : `<p class="muet petit">Aucun pour l'instant.</p>`;
     const coches = (form, nom) => [...form.querySelectorAll(`input[name="${nom}"]:checked`)].map((x) => (nom === "rub" ? x.value : Number(x.value)));

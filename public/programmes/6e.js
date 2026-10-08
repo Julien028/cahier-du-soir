@@ -1,5 +1,5 @@
-// Programme de 6e. FICHIER RECOPIÉ par « npm run programmes » depuis simon-6eme/public/index.html :
-// ne pas le modifier ici, mais dans l'ancien cahier, puis relancer la recopie.
+// Programme de 6e : repris de l'ancien cahier (simon-6eme) le 08/10/2026.
+// C'est maintenant la seule source : on le modifie ici.
 
 /* =========================================================
    1. LE PROGRAMME DE SIXIÈME — 36 SEMAINES

@@ -1,5 +1,5 @@
-// Programme de CE2. FICHIER RECOPIÉ par « npm run programmes » depuis andre-ce2/public/index.html :
-// ne pas le modifier ici, mais dans l'ancien cahier, puis relancer la recopie.
+// Programme de CE2 : repris de l'ancien cahier (andre-ce2) le 08/10/2026.
+// C'est maintenant la seule source : on le modifie ici.
 
 /* =========================================================
    1. LE PROGRAMME DE CE2 — 36 SEMAINES
