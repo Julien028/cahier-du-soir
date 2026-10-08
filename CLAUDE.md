@@ -72,7 +72,8 @@ mots simples, et évite le jargon quand un mot courant suffit.
 |---|---|
 | `public/` | Les pages. `js/app.js` (connexion), `js/enfant.js` (espace enfant), `js/adultes.js` (parents, administrateur), `js/seance.js` (déroulé des questions), `js/regles.js` (étoiles, grades, badges, missions : lu aussi par le serveur). |
 | `public/programmes/` | Un module par rubrique : `ce2.js`, `6e.js` (programme de l'année et banque d'exercices), `peche.js` (chapitres, poissons, quiz, sac). Seule source de ce contenu. |
-| `public/js/peche.js` | L'écran de la pêche. |
+| `public/js/peche.js` | L'écran de la pêche (aussi en aperçu, sans enregistrer). |
+| `public/js/rubriques.js` | Onglet « Rubriques » de l'administrateur : toutes les classes et la pêche, à parcourir et essayer sans rien enregistrer. |
 | `docs/anciens-sites/` | Les pages des anciens sites, pour mémoire. |
 | `functions/api/` | Le serveur : `connexion`, `deconnexion`, `moi`, `inscription` (code d'invitation), `invitations`, `famille/[[chemin]].js` (un parent gère sa famille ; l'administrateur avec `?famille=ID`), `familles` et `comptes` (administrateur), `enfants/[[chemin]].js` (tout ce qui concerne un enfant). |
 | `src/` | Outils du serveur : sessions et mots de passe (repris du site des heures), comptes, tableau de bord d'un enfant. |
@@ -89,6 +90,13 @@ créée par `npm run db:schema:local`, administrateur local par `npm run compte`
 - +1 ⭐ par bonne réponse, +3 si sans faute, +2 par erreur corrigée, +2 pour la mission sans écran.
 - Les questions ratées reviennent 2 jours plus tard (5 au plus à la fois), puis 3, puis 4 jours.
 - Grades : 0, 40, 120, 250, 450, 700, 1000 étoiles. Badges calculés, jamais stockés.
+
+## Ajouter une rubrique
+
+Une nouvelle classe : écrire `public/programmes/<code>.js` sur le modèle de `ce2.js` (même `export const programme`),
+puis ajouter son code à `RUBRIQUES_PRETES` dans `public/js/regles.js`. Elle apparaît alors partout :
+choix des rubriques d'un enfant, onglet Rubriques de l'administrateur, tests (`tests/programmes.test.mjs`
+à compléter). Une rubrique hors classe : l'ajouter à `RUBRIQUES_LIBRES` et lui faire son écran (comme la pêche).
 
 ## Étapes
 

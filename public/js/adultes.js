@@ -5,6 +5,7 @@ import { $, esc, avatar, dateFr, pluriel } from "./outils.js";
 import { CLASSES, RUBRIQUES_PRETES, classe } from "./regles.js";
 import { onglets, qui, deconnecter } from "./app.js";
 import { nomRubrique } from "./enfant.js";
+import { vueRubriques } from "./rubriques.js";
 
 const programmes = {};
 async function programme(code) {
@@ -21,7 +22,7 @@ export function espaceAdulte(app, moi) {
     qui.innerHTML = `${avatar(moi.prenom, moi.couleur)}<span><b>${esc(moi.prenom)}</b> · ${admin ? "administrateur" : "parent"}</span>
       <button class="lien" id="sortir">Se déconnecter</button>`;
     $("#sortir").onclick = deconnecter;
-    const liste = [["enfants", admin ? "Les enfants" : "Mes enfants"], ...(admin ? [["familles", "Familles"], ["comptes", "Comptes"]] : [["famille", "Ma famille"]]), ["moi", "Mon compte"]];
+    const liste = [["enfants", admin ? "Les enfants" : "Mes enfants"], ...(admin ? [["rubriques", "Rubriques"], ["familles", "Familles"], ["comptes", "Comptes"]] : [["famille", "Ma famille"]]), ["moi", "Mon compte"]];
     onglets.innerHTML = liste.map(([v, nom]) => `<button class="onglet" role="tab" aria-selected="${v === vue || (vue === "fiche" && v === "enfants") || (admin && vue === "famille" && v === "familles")}" data-vue="${v}">${nom}</button>`).join("");
     onglets.querySelectorAll(".onglet").forEach((b) => (b.onclick = () => { vue = b.dataset.vue; afficher(); }));
   };
@@ -32,6 +33,7 @@ export function espaceAdulte(app, moi) {
     try {
       if (vue === "comptes") return await vueComptes();
       if (vue === "familles") return await vueFamilles();
+      if (vue === "rubriques" && admin) return vueRubriques(app);
       if (vue === "famille") return await vueFamille(arg);
       if (vue === "moi") return vueMoi();
       if (vue === "fiche") return await vueFiche(arg);

@@ -15,15 +15,22 @@ const melange = (t) => { const c = t.slice(); for (let i = c.length - 1; i > 0; 
 const enQcm = (q) => { const choix = melange([q.b, ...q.f]); return { type: "qcm", enonce: esc(q.q), choix, reponse: choix.indexOf(q.b), explication: esc(q.e) }; };
 
 // app : la zone d'affichage. feter : annonce des étoiles et badges gagnés (vient de enfant.js).
-export async function vuePeche(app, moi, feter, sousVue = "apprendre") {
+// moi = null : aperçu pour l'administrateur, tout se lit et se joue, rien n'est enregistré.
+// retour : facultatif, ajoute un lien « ‹ Toutes les rubriques » en haut (aperçu).
+export async function vuePeche(app, moi, feter, sousVue = "apprendre", retour = null) {
   const p = await contenu();
-  const D = await api(`enfants/${moi.id}/peche`);
+  const apercu = !moi;
+  const D = apercu ? { chapitres: [], prises: [], sac: [] } : await api(`enfants/${moi.id}/peche`);
+  const pasEnApercu = () => { alert("Aperçu : rien n'est enregistré ici. Les enfants, eux, remplissent leur propre carnet."); };
   const valide = (i) => D.chapitres.find((c) => c.chapitre === i)?.reussi;
   const meilleur = (i) => D.chapitres.find((c) => c.chapitre === i)?.meilleur;
   const nav = [["apprendre", "Apprendre"], ["poissons", "Les poissons"], ["prises", "Mes prises"], ["sac", "Le sac"]];
-  const barre = `<div class="ligne" style="margin-bottom:14px">${nav.map(([v, n]) => `<button class="onglet" aria-selected="${v === sousVue}" data-p="${v}">${n}</button>`).join("")}</div>`;
-  const aller = (v) => vuePeche(app, moi, feter, v);
-  const brancher = () => app.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => aller(b.dataset.p)));
+  const barre = (retour ? `<button class="lien" id="retour-rub">‹ Toutes les rubriques</button>` : "") + (apercu ? `<p class="muet petit">👀 Aperçu administrateur : tout se lit et se joue, rien n'est enregistré.</p>` : "") + `<div class="ligne" style="margin-bottom:14px">${nav.map(([v, n]) => `<button class="onglet" aria-selected="${v === sousVue}" data-p="${v}">${n}</button>`).join("")}</div>`;
+  const aller = (v) => vuePeche(app, moi, feter, v, retour);
+  const brancher = () => {
+    app.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => aller(b.dataset.p)));
+    if (retour && $("#retour-rub")) $("#retour-rub").onclick = retour;
+  };
   window.scrollTo(0, 0);
 
   if (sousVue === "apprendre") {
@@ -72,6 +79,7 @@ export async function vuePeche(app, moi, feter, sousVue = "apprendre") {
     brancher();
     $("#dat").value = new Date().toLocaleDateString("fr-CA");
     $("#ajouter").onclick = async () => {
+      if (apercu) return pasEnApercu();
       try {
         const g = await api(`enfants/${moi.id}/peche/prises`, { methode: "POST", corps: { espece: $("#esp").value, taille: $("#tai").value, date: $("#dat").value, lieu: $("#lieu").value, remis: $("#remis").checked } });
         await feter(g);
@@ -79,6 +87,7 @@ export async function vuePeche(app, moi, feter, sousVue = "apprendre") {
       } catch (e) { $("#err").textContent = e.message; }
     };
     app.querySelectorAll("[data-sup]").forEach((b) => (b.onclick = async () => {
+      if (apercu) return pasEnApercu();
       if (!confirm("Effacer cette prise du carnet ?")) return;
       await api(`enfants/${moi.id}/peche/prises/${b.dataset.sup}`, { methode: "DELETE", corps: {} }).catch((e) => alert(e.message));
       aller("prises");
@@ -94,7 +103,7 @@ export async function vuePeche(app, moi, feter, sousVue = "apprendre") {
     <div class="carte"><h3>Avant la première sortie de l'année</h3>
     <p>On regarde ensemble l'arrêté de pêche du département : les dates, les tailles et les endroits autorisés changent chaque année.</p></div>`;
   brancher();
-  const enregistrer = async (coches) => { await api(`enfants/${moi.id}/peche/sac`, { methode: "PUT", corps: { coches } }).catch((e) => alert(e.message)); aller("sac"); };
+  const enregistrer = async (coches) => { if (apercu) { D.sac = coches; return; } await api(`enfants/${moi.id}/peche/sac`, { methode: "PUT", corps: { coches } }).catch((e) => alert(e.message)); aller("sac"); };
   app.querySelectorAll("[data-s]").forEach((c) => (c.onchange = () => enregistrer(c.checked ? [...D.sac, Number(c.dataset.s)] : D.sac.filter((x) => x !== Number(c.dataset.s)))));
   $("#vider").onclick = () => enregistrer([]);
 
@@ -112,7 +121,7 @@ export async function vuePeche(app, moi, feter, sousVue = "apprendre") {
   async function quiz(questions, i, titre) {
     const res = await derouler(app, questions.map(enQcm), { titre });
     let g = null;
-    if (i !== null) g = await api(`enfants/${moi.id}/peche/quiz`, { methode: "POST", corps: { chapitre: i, score: res.score, total: res.total } }).catch(() => null);
+    if (i !== null && !apercu) g = await api(`enfants/${moi.id}/peche/quiz`, { methode: "POST", corps: { chapitre: i, score: res.score, total: res.total } }).catch(() => null);
     const reussi = res.score >= Math.ceil(res.total * 0.8);
     if (reussi) confettis(60);
     app.innerHTML = `<div class="carte" style="text-align:center"><div style="font-size:52px">${reussi ? "🐟" : "🎣"}</div>
@@ -120,7 +129,7 @@ export async function vuePeche(app, moi, feter, sousVue = "apprendre") {
       <p class="notion">${i === null ? (reussi ? "Beau score au grand quiz." : "Pas mal. Retente quand tu veux.") : reussi ? "Chapitre validé. Tu peux passer au suivant." : "Presque. Relis le chapitre et retente, ça rentrera vite."}</p>
       ${g?.gain ? `<p class="etoiles" style="font-size:24px">+${g.gain} ⭐</p>` : ""}
       <button class="cta" id="fin">Revenir aux chapitres</button></div>`;
-    if (g?.gain || g?.nouveauxBadges?.length) await feter(g);
+    if (feter && (g?.gain || g?.nouveauxBadges?.length)) await feter(g);
     $("#fin").onclick = () => aller("apprendre");
   }
 }
