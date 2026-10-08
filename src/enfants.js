@@ -7,11 +7,13 @@ import {
 export async function peutVoir(env, session, enfantId) {
   if (!Number.isInteger(enfantId)) return null;
   const enfant = await env.DB.prepare(
-    "SELECT id, identifiant, prenom, nom, annee_naissance, classe, rubriques, couleur, actif FROM comptes WHERE id = ? AND role = 'enfant'"
+    "SELECT id, identifiant, prenom, nom, annee_naissance, classe, rubriques, couleur, actif, famille_id FROM comptes WHERE id = ? AND role = 'enfant'"
   ).bind(enfantId).first();
   if (!enfant) return null;
   if (session.role === "administrateur") return enfant;
   if (session.role === "enfant") return session.id === enfantId ? enfant : null;
+  // Un parent voit les enfants de sa famille, et ceux que l'administrateur lui a reliés.
+  if (session.famille_id && enfant.famille_id === session.famille_id) return enfant;
   const lien = await env.DB.prepare("SELECT 1 FROM liens_parents WHERE parent_id = ? AND enfant_id = ?")
     .bind(session.id, enfantId).first();
   return lien ? enfant : null;

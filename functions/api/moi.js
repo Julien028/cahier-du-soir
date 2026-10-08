@@ -13,12 +13,14 @@ export async function onRequestGet(contexte) {
     enfants = (await env.DB.prepare("SELECT id, prenom, nom, classe, couleur FROM comptes WHERE role = 'enfant' AND actif = 1 ORDER BY prenom").all()).results;
   } else if (session.role === "parent") {
     enfants = (await env.DB.prepare(
-      `SELECT c.id, c.prenom, c.nom, c.classe, c.couleur FROM liens_parents l JOIN comptes c ON c.id = l.enfant_id
-        WHERE l.parent_id = ? AND c.actif = 1 ORDER BY c.prenom`).bind(session.id).all()).results;
+      `SELECT id, prenom, nom, classe, couleur FROM comptes
+        WHERE role = 'enfant' AND actif = 1
+          AND ((famille_id IS NOT NULL AND famille_id = ?) OR id IN (SELECT enfant_id FROM liens_parents WHERE parent_id = ?))
+        ORDER BY prenom`).bind(session.famille_id, session.id).all()).results;
   }
   return json({
     id: session.id, identifiant: session.identifiant, prenom: session.prenom, nom: session.nom,
-    role: session.role, couleur: session.couleur, aujourdhui: aujourdhui(), enfants,
+    role: session.role, couleur: session.couleur, famille_id: session.famille_id, aujourdhui: aujourdhui(), enfants,
   });
 }
 

@@ -51,7 +51,7 @@ export async function lireSession(request, env) {
   const jeton = lireCookie(request);
   if (!/^[0-9a-f]{64}$/.test(jeton)) return null;
   const compte = await env.DB.prepare(
-    `SELECT c.id, c.identifiant, c.prenom, c.nom, c.role, c.classe, c.rubriques, c.couleur, c.annee_naissance, s.expire_le
+    `SELECT c.id, c.identifiant, c.prenom, c.nom, c.role, c.classe, c.rubriques, c.couleur, c.annee_naissance, c.famille_id, s.expire_le
        FROM sessions s JOIN comptes c ON c.id = s.compte_id
       WHERE s.jeton = ? AND s.expire_le > datetime('now') AND c.actif = 1`
   ).bind(jeton).first();

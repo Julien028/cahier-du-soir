@@ -21,8 +21,8 @@ export function espaceAdulte(app, moi) {
     qui.innerHTML = `${avatar(moi.prenom, moi.couleur)}<span><b>${esc(moi.prenom)}</b> · ${admin ? "administrateur" : "parent"}</span>
       <button class="lien" id="sortir">Se déconnecter</button>`;
     $("#sortir").onclick = deconnecter;
-    const liste = [["enfants", admin ? "Les enfants" : "Mes enfants"], ...(admin ? [["comptes", "Comptes"]] : []), ["moi", "Mon compte"]];
-    onglets.innerHTML = liste.map(([v, nom]) => `<button class="onglet" role="tab" aria-selected="${v === vue || (vue === "fiche" && v === "enfants")}" data-vue="${v}">${nom}</button>`).join("");
+    const liste = [["enfants", admin ? "Les enfants" : "Mes enfants"], ...(admin ? [["familles", "Familles"], ["comptes", "Comptes"]] : [["famille", "Ma famille"]]), ["moi", "Mon compte"]];
+    onglets.innerHTML = liste.map(([v, nom]) => `<button class="onglet" role="tab" aria-selected="${v === vue || (vue === "fiche" && v === "enfants") || (admin && vue === "famille" && v === "familles")}" data-vue="${v}">${nom}</button>`).join("");
     onglets.querySelectorAll(".onglet").forEach((b) => (b.onclick = () => { vue = b.dataset.vue; afficher(); }));
   };
   const afficher = async (arg) => {
@@ -31,6 +31,8 @@ export function espaceAdulte(app, moi) {
     app.innerHTML = `<div class="chargement"><span class="point"></span><span class="point"></span><span class="point"></span></div>`;
     try {
       if (vue === "comptes") return await vueComptes();
+      if (vue === "familles") return await vueFamilles();
+      if (vue === "famille") return await vueFamille(arg);
       if (vue === "moi") return vueMoi();
       if (vue === "fiche") return await vueFiche(arg);
       return await vueEnfants();
@@ -43,7 +45,7 @@ export function espaceAdulte(app, moi) {
   async function vueEnfants() {
     const m = await api("moi");
     if (!m.enfants.length) {
-      app.innerHTML = `<div class="carte"><p class="notion">${admin ? "Aucun enfant pour l'instant. Créez-en un dans l'onglet Comptes." : "Aucun enfant n'est encore relié à votre compte. Demandez à l'administrateur."}</p></div>`;
+      app.innerHTML = `<div class="carte"><p class="notion">${admin ? "Aucun enfant pour l'instant. Créez-en un dans l'onglet Comptes." : "Aucun enfant pour l'instant. Ajoutez vos enfants dans l'onglet « Ma famille »."}</p></div>`;
       return;
     }
     const tableaux = await Promise.all(m.enfants.map((e) => api(`enfants/${e.id}`)));
@@ -237,6 +239,122 @@ export function espaceAdulte(app, moi) {
     }));
     app.querySelectorAll("[data-actif]").forEach((b) => (b.onclick = async () => {
       try { await api(`comptes/${b.dataset.actif}`, { methode: "PATCH", corps: { actif: b.dataset.val === "1" } }); await vueComptes(); } catch (x) { alert(x.message); }
+    }));
+  }
+
+  // --- Les familles (administrateur) : la liste, et les invitations pour une nouvelle famille.
+  async function vueFamilles() {
+    const [familles, invitations] = await Promise.all([api("familles"), api("invitations")]);
+    app.innerHTML = `<div class="pile">
+      <div class="carte"><h2>Inviter une nouvelle famille</h2>
+        <p class="muet">Le parent crée lui-même son espace avec ce code (lien « Espace parents », puis « J'ai un code d'invitation »). Le code sert une fois et dure 30 jours.</p>
+        <label class="titre" for="nf">Nom de la famille (facultatif, le parent pourra le choisir)</label>
+        <input type="text" id="nf" class="champ" maxlength="60" placeholder="ex. Famille Martin">
+        <button class="cta" id="inviter">Créer un code d'invitation</button><div id="code-inv"></div></div>
+      ${invitations.length ? `<div class="carte"><h3>Codes pas encore utilisés</h3>${invitations.map((i) => `<p class="petit"><b>${esc(i.code)}</b> — ${i.famille ? "rejoindre " + esc(i.famille) : "nouvelle famille" + (i.nom_famille ? " « " + esc(i.nom_famille) + " »" : "")} · par ${esc(i.cree_par)} · jusqu'au ${dateFr(i.expire_le)}</p>`).join("")}</div>` : ""}
+      <h2>Les familles</h2>
+      ${familles.length ? familles.map((f) => `<button class="enfant-ligne" data-f="${f.id}"><span class="grow"><b>${esc(f.nom)}</b><br>
+        <span class="petit muet">Parents : ${f.parents.map((p) => esc(p.prenom)).join(", ") || "aucun"} · Enfants : ${f.enfants.map((e) => esc(e.prenom)).join(", ") || "aucun"}</span></span><span>›</span></button>`).join("")
+        : `<p class="muet">Aucune famille pour l'instant.</p>`}
+    </div>`;
+    $("#inviter").onclick = async () => {
+      try {
+        const r = await api("invitations", { methode: "POST", corps: { nom_famille: $("#nf").value } });
+        $("#code-inv").innerHTML = `<div class="secret"><p>Code d'invitation à donner à la famille :</p><div class="code-montre" style="font-size:28px;letter-spacing:3px">${esc(r.code)}</div>
+          <p class="petit">Valable ${r.jours} jours, pour une seule inscription.</p></div>`;
+      } catch (e) { alert(e.message); }
+    };
+    app.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { vue = "famille"; afficher(Number(b.dataset.f)); }));
+  }
+
+  // --- Une famille : ses parents, ses enfants, et leur gestion. Pour un parent, la sienne ;
+  // pour l'administrateur, celle qu'il a ouverte (fid).
+  async function vueFamille(fid) {
+    const q = admin ? `?famille=${fid}` : "";
+    const F = await api("famille" + q);
+    const choixClasse = (sel) => `<select class="mini" name="classe">${CLASSES.map((c) => `<option value="${c.code}"${c.code === sel ? " selected" : ""}>${c.nom}${RUBRIQUES_PRETES.includes(c.code) ? "" : " (programme pas encore prêt)"}</option>`).join("")}</select>`;
+    const cases = (choisies = []) => `<div class="cases">${RUBRIQUES_PRETES.map((r) => `<label><input type="checkbox" name="rub" value="${r}"${choisies.includes(r) ? " checked" : ""}> ${esc(nomRubrique(r))}</label>`).join("")}
+      <label><input type="checkbox" name="rub" value="peche"${choisies.includes("peche") ? " checked" : ""}> La pêche</label></div>`;
+    const formEnfant = (e = {}) => `
+      <label class="titre">Prénom</label><input type="text" class="champ" name="prenom" required maxlength="40" value="${esc(e.prenom || "")}">
+      <label class="titre">Année de naissance (pour son âge)</label><input type="number" name="annee" min="2005" max="2030" value="${e.annee_naissance || ""}" placeholder="ex. 2016">
+      <label class="titre">Classe</label>${choixClasse(e.classe || "ce2")}
+      <label class="titre">Ce qu'il ou elle travaille</label>${cases(e.rubriques || [])}
+      <p class="muet petit">Cochez sa classe (et la suivante s'il est à l'aise), et la pêche s'il le souhaite. Programmes prêts : ${RUBRIQUES_PRETES.map(nomRubrique).join(", ")}.</p>`;
+    const lire = (f) => { const v = Object.fromEntries(new FormData(f)); return { prenom: v.prenom, annee_naissance: v.annee || null, classe: v.classe, rubriques: [...f.querySelectorAll('input[name="rub"]:checked')].map((x) => x.value) }; };
+    const montrerCode = (prenom, identifiant, code) => {
+      $("#secret").innerHTML = `<div class="secret"><p>Pour se connecter, <b>${esc(prenom)}</b> touche son prénom (ou tape <b>${esc(identifiant)}</b>), puis son code secret :</p>
+        <div class="code-montre">${esc(code)}</div><p class="petit">Notez-le : il ne sera plus affiché. En cas d'oubli, faites-en un nouveau ici.</p></div>`;
+      window.scrollTo(0, 0);
+    };
+
+    app.innerHTML = `<div class="pile">
+      ${admin ? `<button class="lien" id="retour">‹ Toutes les familles</button>` : ""}
+      <div id="secret"></div>
+      <div class="carte"><h2>${esc(F.famille.nom)}</h2>
+        <p class="muet">Parents : ${F.parents.map((p) => `${esc(p.prenom)} ${esc(p.nom)} (${esc(p.identifiant)})`).join(", ") || "aucun"}</p>
+        <details class="bloc"><summary>Changer le nom de la famille</summary>
+          <input type="text" id="nomf" class="champ" maxlength="60" value="${esc(F.famille.nom)}"><button class="cta petit" id="renommer">Enregistrer</button></details>
+        <details class="bloc"><summary>Inviter l'autre parent</summary>
+          <p class="muet petit">Il ou elle crée son propre accès avec ce code, et suit les mêmes enfants.</p>
+          <button class="cta sec petit" id="inviter">Créer un code d'invitation</button><div id="code-inv"></div>
+          ${F.invitations.length ? `<p class="muet petit">Codes en attente : ${F.invitations.map((i) => esc(i.code)).join(", ")}</p>` : ""}</details></div>
+
+      <h2>Les enfants</h2>
+      ${F.enfants.map((e) => `<details class="bloc carte"${e.actif ? "" : ' style="opacity:.6"'}><summary>${avatar(e.prenom, e.couleur)} ${esc(e.prenom)}
+          <span class="muet petit">— ${esc(classe(e.classe)?.nom || "")} · ${e.rubriques.map(nomRubrique).join(", ") || "rien de coché"} · identifiant <b>${esc(e.identifiant)}</b>${e.actif ? "" : " · en pause"}</span></summary>
+        <p class="muet petit">${e.derniere_connexion ? "Dernière connexion le " + dateFr(e.derniere_connexion) : "Jamais connecté"}</p>
+        <form data-modif="${e.id}">${formEnfant(e)}<button class="cta petit" type="submit">Enregistrer</button></form>
+        <div class="reglage"><label class="titre">Code secret</label>
+          <div class="ligne"><input type="text" inputmode="numeric" maxlength="4" class="champ" style="max-width:120px" placeholder="4 chiffres" data-code-champ="${e.id}">
+          <button class="cta sec petit" data-code="${e.id}" style="width:auto;margin:0">Mettre ce code</button>
+          <button class="cta sec petit" data-hasard="${e.id}" style="width:auto;margin:0">Code au hasard</button></div></div>
+        <div class="ligne" style="margin-top:12px"><button class="cta sec petit" data-actif="${e.id}" data-val="${e.actif ? 0 : 1}" style="width:auto">${e.actif ? "Mettre en pause" : "Réactiver"}</button>
+          <button class="cta sec petit" data-sup="${e.id}" style="width:auto;color:var(--marge);border-color:var(--marge)">Supprimer</button></div>
+      </details>`).join("") || `<p class="muet">Pas encore d'enfant.</p>`}
+
+      <details class="bloc carte" ${F.enfants.length ? "" : "open"}><summary>➕ Ajouter un enfant</summary><form id="ajout">
+        ${formEnfant()}
+        <label class="titre">Code secret (4 chiffres, facultatif : sinon il est tiré au hasard)</label>
+        <input type="text" inputmode="numeric" maxlength="4" class="champ" name="code" placeholder="ex. 2580">
+        <button class="cta" type="submit">Ajouter l'enfant</button></form></details>
+    </div>`;
+
+    const base = (chemin = "") => "famille" + chemin + q;
+    const recharger = () => vueFamille(fid);
+    if ($("#retour")) $("#retour").onclick = () => { vue = "familles"; afficher(); };
+    $("#renommer").onclick = async () => { try { await api(base(), { methode: "PATCH", corps: { nom: $("#nomf").value } }); recharger(); } catch (e) { alert(e.message); } };
+    $("#inviter").onclick = async () => {
+      try {
+        const r = await api("invitations", { methode: "POST", corps: admin ? { famille_id: fid } : {} });
+        $("#code-inv").innerHTML = `<div class="secret"><p>Code à donner à l'autre parent :</p><div class="code-montre" style="font-size:28px;letter-spacing:3px">${esc(r.code)}</div>
+          <p class="petit">Sur le site : « Espace parents », puis « J'ai un code d'invitation ». Valable ${r.jours} jours.</p></div>`;
+      } catch (e) { alert(e.message); }
+    };
+    $("#ajout").onsubmit = async (ev) => {
+      ev.preventDefault();
+      const code = new FormData(ev.target).get("code");
+      try { const r = await api(base("/enfants"), { methode: "POST", corps: { ...lire(ev.target), ...(code ? { code } : {}) } }); await recharger(); montrerCode(r.prenom, r.identifiant, r.code); }
+      catch (e) { alert(e.message); }
+    };
+    app.querySelectorAll("[data-modif]").forEach((f) => (f.onsubmit = async (ev) => {
+      ev.preventDefault();
+      try { await api(base("/enfants/" + f.dataset.modif), { methode: "PATCH", corps: lire(f) }); recharger(); } catch (e) { alert(e.message); }
+    }));
+    const changerCode = async (id, corps) => {
+      const e = F.enfants.find((x) => x.id === Number(id));
+      try { const r = await api(base("/enfants/" + id), { methode: "PATCH", corps }); await recharger(); montrerCode(e.prenom, e.identifiant, r.code); } catch (x) { alert(x.message); }
+    };
+    app.querySelectorAll("[data-code]").forEach((b) => (b.onclick = () => changerCode(b.dataset.code, { code: app.querySelector(`[data-code-champ="${b.dataset.code}"]`).value.trim() })));
+    app.querySelectorAll("[data-hasard]").forEach((b) => (b.onclick = () => changerCode(b.dataset.hasard, { nouveau_code: true })));
+    app.querySelectorAll("[data-actif]").forEach((b) => (b.onclick = async () => {
+      try { await api(base("/enfants/" + b.dataset.actif), { methode: "PATCH", corps: { actif: b.dataset.val === "1" } }); recharger(); } catch (e) { alert(e.message); }
+    }));
+    app.querySelectorAll("[data-sup]").forEach((b) => (b.onclick = async () => {
+      const e = F.enfants.find((x) => x.id === Number(b.dataset.sup));
+      if (!confirm(`Supprimer ${e.prenom} ? Toutes ses séances, ses étoiles et son carnet de pêche seront effacés, sans retour possible.`)) return;
+      if (prompt(`Pour confirmer, tapez le prénom : ${e.prenom}`)?.trim().toLowerCase() !== e.prenom.toLowerCase()) return alert("Suppression annulée.");
+      try { await api(base("/enfants/" + e.id), { methode: "DELETE", corps: {} }); recharger(); } catch (x) { alert(x.message); }
     }));
   }
 

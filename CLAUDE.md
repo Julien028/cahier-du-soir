@@ -15,11 +15,16 @@ mots simples, et évite le jargon quand un mot courant suffit.
   journal des actions. Compte Cloudflare `bretonvilliers28@gmail.com`, GitHub `Julien028`,
   dépôt privé `Julien028/cahier-du-soir`, branche `master`.
 - Comptes :
-  - **administrateur** (Julien) : crée tous les comptes, voit tout. Seul à créer des comptes.
+  - **administrateur** (Julien) : voit et modifie tout ; invite les nouvelles familles.
   - **enfant** : prénom, âge, classe, rubriques choisies (sa classe, pêche…). Connexion
     en touchant son prénom puis un **code de 4 chiffres** ; la tablette s'en souvient.
     Ne voit que ses propres résultats.
   - **parent** : suit la progression de ses enfants, et seulement des siens.
+  - **Compte famille** (décidé le 08/10/2026) : une famille = ses parents et ses enfants. Un parent
+    crée lui-même son espace avec un **code d'invitation** (donné par l'administrateur pour une
+    nouvelle famille, ou par l'autre parent pour rejoindre la sienne ; usage unique, 30 jours).
+    Les parents créent, modifient, mettent en pause et **suppriment** les enfants de leur famille,
+    et choisissent leur code. Pas d'inscription libre.
 - Rubriques : une par classe (programme de l'année), plus la pêche. Un enfant peut ouvrir
   le programme de la classe suivante.
 - Première version : **CE2, CM1 et 6e**, plus la pêche. Les autres classes (CP → 3e)
@@ -51,8 +56,11 @@ mots simples, et évite le jargon quand un mot courant suffit.
 - Code : GitHub privé `Julien028/cahier-du-soir`, branche `master`.
 - Après chaque modification : `npm test`, vérifier sur le poste (`npm run dev`), commit, `git push`,
   puis **`npm run deploy`** (la publication n'est pas automatique).
-- Changement de la base : ajouter le changement à `db/schema.sql` (rejouable) et le passer
-  avec `npm run db:schema`.
+- Changement de la base : l'ajouter à `db/schema.sql` (rejouable) et, si c'est une colonne sur une
+  table existante, écrire aussi `db/migrations/AAAA-MM-JJ-quoi.sql` ; passer `npm run db:schema`
+  puis la migration. Migration `2026-10-08-familles.sql` passée en ligne le 08/10/2026.
+- Sur ce poste, `curl` peut échouer (erreur 35, contrôle de révocation Windows hors ligne) :
+  ajouter `--ssl-no-revoke`.
 - Premier administrateur : `npm run compte -- --enligne` (Julien tape lui-même son mot de passe).
   Dans le terminal de Julien, wrangler n'est pas connecté : ajouter `--preparer`, puis passer
   `essais/compte-admin.sql` à la base depuis le terminal de Claude, et effacer le fichier.
@@ -66,9 +74,9 @@ mots simples, et évite le jargon quand un mot courant suffit.
 | `public/programmes/` | Un module par rubrique : `ce2.js`, `6e.js` (programme de l'année et banque d'exercices), `peche.js` (chapitres, poissons, quiz, sac). Seule source de ce contenu. |
 | `public/js/peche.js` | L'écran de la pêche. |
 | `docs/anciens-sites/` | Les pages des anciens sites, pour mémoire. |
-| `functions/api/` | Le serveur : `connexion`, `deconnexion`, `moi`, `comptes` (administrateur), `enfants/[[chemin]].js` (tout ce qui concerne un enfant). |
+| `functions/api/` | Le serveur : `connexion`, `deconnexion`, `moi`, `inscription` (code d'invitation), `invitations`, `famille/[[chemin]].js` (un parent gère sa famille ; l'administrateur avec `?famille=ID`), `familles` et `comptes` (administrateur), `enfants/[[chemin]].js` (tout ce qui concerne un enfant). |
 | `src/` | Outils du serveur : sessions et mots de passe (repris du site des heures), comptes, tableau de bord d'un enfant. |
-| `db/schema.sql` | La base. |
+| `db/schema.sql` | La base (complète, rejouable). `db/migrations/` : changements à passer une fois sur une base plus ancienne. |
 | `tests/` | `npm test` (règles, programmes) ; `tests/parcours.mjs` : parcours complet contre le site lancé sur le poste. |
 | `essais/` | Comptes et journal de la base **locale** de test. Pas sur GitHub. |
 

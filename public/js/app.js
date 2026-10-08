@@ -110,7 +110,11 @@ function ecranAdulte() {
       <button class="cta" id="go">Se connecter</button>
       <p class="erreur" id="err"></p>
       <button class="lien" id="retour">Retour</button>
-    </div>`;
+    </div>
+    <div class="carte" style="margin-top:16px"><h3>Première fois ?</h3>
+      <p class="muet">Avec le code d'invitation qu'on vous a donné, créez l'espace de votre famille.</p>
+      <button class="cta sec" id="inscr">J'ai un code d'invitation</button></div>`;
+  $("#inscr").onclick = ecranInscription;
   const go = async () => {
     try {
       await api("connexion", { methode: "POST", corps: { identifiant: $("#ident").value, mot_de_passe: $("#mdp").value } });
@@ -120,6 +124,39 @@ function ecranAdulte() {
   $("#go").onclick = go;
   $("#mdp").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
   $("#retour").onclick = ecranConnexion;
+}
+
+// --- Inscription d'un parent avec un code d'invitation.
+function ecranInscription() {
+  qui.innerHTML = `<p>Créer l'espace de ma famille</p>`;
+  app.innerHTML = `
+    <div class="carte">
+      <h2>Créer mon espace</h2>
+      <p class="muet">Votre code d'invitation sert une seule fois. Ensuite, vous créerez vous-même les comptes de vos enfants.</p>
+      <label class="titre" for="code">Code d'invitation</label>
+      <input type="text" id="code" class="champ" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ex. K7QM-2XPA">
+      <label class="titre" for="famille">Nom de la famille <span class="muet">(si c'est une nouvelle famille)</span></label>
+      <input type="text" id="famille" class="champ" maxlength="60" placeholder="ex. Famille Pichot">
+      <label class="titre" for="prenom">Votre prénom</label><input type="text" id="prenom" class="champ" maxlength="40" autocomplete="given-name">
+      <label class="titre" for="nom">Votre nom</label><input type="text" id="nom" class="champ" maxlength="60" autocomplete="family-name">
+      <label class="titre" for="ident">Identifiant pour vous connecter</label>
+      <input type="text" id="ident" class="champ" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="ex. claire.pichot">
+      <p class="muet petit">Lettres minuscules, chiffres, point ou tiret, sans espace ni accent.</p>
+      <label class="titre" for="mdp">Mot de passe (10 caractères au moins)</label><input type="password" id="mdp" autocomplete="new-password">
+      <label class="titre" for="mdp2">Encore une fois</label><input type="password" id="mdp2" autocomplete="new-password">
+      <button class="cta" id="go">Créer mon espace</button>
+      <p class="erreur" id="err"></p>
+      <button class="lien" id="retour">Retour</button>
+    </div>`;
+  $("#retour").onclick = ecranAdulte;
+  $("#go").onclick = async () => {
+    if ($("#mdp").value !== $("#mdp2").value) return ($("#err").textContent = "Les deux mots de passe ne sont pas les mêmes.");
+    try {
+      await api("inscription", { methode: "POST", corps: { code: $("#code").value, nom_famille: $("#famille").value, prenom: $("#prenom").value,
+        nom: $("#nom").value, identifiant: $("#ident").value, mot_de_passe: $("#mdp").value } });
+      location.reload();
+    } catch (e) { $("#err").textContent = e.message; }
+  };
 }
 
 demarrer();

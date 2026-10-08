@@ -64,7 +64,7 @@ export function lireFiche(corps, avant = {}) {
 export async function listeComptes(env) {
   const { results } = await env.DB.prepare(
     `SELECT c.id, c.identifiant, c.prenom, c.nom, c.role, c.annee_naissance, c.classe, c.rubriques, c.couleur,
-            c.actif, c.cree_le, c.cree_par,
+            c.actif, c.cree_le, c.cree_par, c.famille_id, (SELECT nom FROM familles f WHERE f.id = c.famille_id) AS famille,
             (SELECT MAX(s.cree_le) FROM sessions s WHERE s.compte_id = c.id) AS derniere_connexion
        FROM comptes c ORDER BY c.actif DESC, CASE c.role WHEN 'administrateur' THEN 0 WHEN 'parent' THEN 1 ELSE 2 END, c.prenom`
   ).all();
@@ -85,3 +85,31 @@ export function remplacerLiens(env, parentId, enfants) {
       "INSERT INTO liens_parents (parent_id, enfant_id) SELECT ?, id FROM comptes WHERE id = ? AND role = 'enfant'").bind(parentId, e)),
   ];
 }
+
+// Un identifiant libre à partir d'une base : « simon », sinon « simon-2 », « simon-3 »…
+export async function identifiantLibre(env, base) {
+  let identifiant = base;
+  for (let n = 2; await env.DB.prepare("SELECT 1 FROM comptes WHERE identifiant = ?").bind(identifiant).first(); n++) identifiant = `${base}-${n}`;
+  return identifiant;
+}
+
+// Un code d'invitation difficile à deviner et facile à recopier : « K7QM-2XPA ».
+// (Ni 0/O ni 1/I/L, pour éviter les confusions.)
+const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export function codeInvitation() {
+  const a = crypto.getRandomValues(new Uint32Array(8));
+  const c = [...a].map((n) => ALPHABET[n % ALPHABET.length]).join("");
+  return `${c.slice(0, 4)}-${c.slice(4)}`;
+}
+export const normaliserInvitation = (v) => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^(.{4})(.{4})$/, "$1-$2");
+export const DUREE_INVITATION_JOURS = 30;
+
+// Effacer un enfant et tout ce qui le concerne (le journal garde la trace de l'effacement).
+export const ordresSuppressionEnfant = (env, id) => [
+  "seances", "erreurs", "etoiles", "missions", "recompenses", "mots", "progression",
+  "peche_chapitres", "peche_prises", "peche_sac",
+].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE enfant_id = ?`).bind(id)).concat([
+  env.DB.prepare("DELETE FROM liens_parents WHERE enfant_id = ?").bind(id),
+  env.DB.prepare("DELETE FROM sessions WHERE compte_id = ?").bind(id),
+  env.DB.prepare("DELETE FROM comptes WHERE id = ? AND role = 'enfant'").bind(id),
+]);

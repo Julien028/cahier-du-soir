@@ -3,6 +3,27 @@
 
 PRAGMA foreign_keys = ON;
 
+-- Une famille : ses parents et ses enfants. Les parents gèrent eux-mêmes les enfants de leur
+-- famille ; l'administrateur voit et modifie tout.
+CREATE TABLE IF NOT EXISTS familles (
+  id      INTEGER PRIMARY KEY,
+  nom     TEXT NOT NULL,
+  cree_le TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Les codes d'invitation : donnés par l'administrateur (nouvelle famille) ou par un parent
+-- (pour inviter l'autre parent dans sa famille). Un code sert une fois et expire.
+CREATE TABLE IF NOT EXISTS invitations (
+  code         TEXT PRIMARY KEY,
+  famille_id   INTEGER REFERENCES familles(id),   -- vide : une nouvelle famille sera créée
+  nom_famille  TEXT,                             -- proposé pour une nouvelle famille
+  cree_par     TEXT NOT NULL,
+  cree_le      TEXT NOT NULL DEFAULT (datetime('now')),
+  expire_le    TEXT NOT NULL,
+  utilisee_le  TEXT,
+  utilisee_par TEXT
+);
+
 -- Trois niveaux : administrateur (Julien), parent, enfant.
 -- Un enfant se connecte avec son identifiant (son prénom, en minuscules) et un code de
 -- 4 chiffres ; un adulte avec identifiant et mot de passe. Les deux sont gardés hachés.
@@ -18,12 +39,13 @@ CREATE TABLE IF NOT EXISTS comptes (
   classe           TEXT,                    -- enfant : 'ce2', '6e'…
   rubriques        TEXT NOT NULL DEFAULT '[]', -- enfant : JSON, ex. ["ce2","cm1"]
   couleur          TEXT NOT NULL DEFAULT '#1E3A6E',
+  famille_id       INTEGER REFERENCES familles(id), -- parent ou enfant (ajouté le 08/10/2026)
   actif            INTEGER NOT NULL DEFAULT 1,
   cree_le          TEXT NOT NULL DEFAULT (datetime('now')),
   cree_par         TEXT
 );
 
--- Quels enfants chaque parent peut suivre.
+-- Liens parent-enfant posés à la main par l'administrateur (en plus de la famille).
 CREATE TABLE IF NOT EXISTS liens_parents (
   parent_id INTEGER NOT NULL REFERENCES comptes(id),
   enfant_id INTEGER NOT NULL REFERENCES comptes(id),

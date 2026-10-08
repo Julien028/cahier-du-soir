@@ -1,7 +1,7 @@
 import { json, erreur, corpsJson } from "../../../src/outils.js";
 import { exiger, journal, hacher } from "../../../src/session.js";
 import {
-  identifiantValide, identifiantDepuis, codeProvisoire, motDePasseProvisoire, listeComptes, lireFiche, remplacerLiens,
+  identifiantValide, identifiantDepuis, codeProvisoire, motDePasseProvisoire, listeComptes, lireFiche, remplacerLiens, identifiantLibre,
 } from "../../../src/comptes.js";
 
 // GET  /api/comptes (administrateur) -> tous les comptes, sans jamais les mots de passe.
@@ -30,17 +30,17 @@ export async function onRequestPost(contexte) {
   if (identifiant) {
     if (await env.DB.prepare("SELECT 1 FROM comptes WHERE identifiant = ?").bind(identifiant).first()) return erreur(409, "Cet identifiant existe déjà.");
   } else {
-    const base = identifiantDepuis(fiche.prenom);
-    identifiant = base;
-    for (let n = 2; await env.DB.prepare("SELECT 1 FROM comptes WHERE identifiant = ?").bind(identifiant).first(); n++) identifiant = `${base}-${n}`;
+    identifiant = await identifiantLibre(env, identifiantDepuis(fiche.prenom));
   }
 
+  const familleId = corps.famille_id ? Number(corps.famille_id) : null;
+  if (familleId && !(await env.DB.prepare("SELECT 1 FROM familles WHERE id = ?").bind(familleId).first())) return erreur(400, "Famille inconnue.");
   const secret = fiche.role === "enfant" ? codeProvisoire() : motDePasseProvisoire();
   const c = await env.DB.prepare(
-    `INSERT INTO comptes (identifiant, prenom, nom, role, mot_de_passe, annee_naissance, classe, rubriques, couleur, cree_par)
-     VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id`
+    `INSERT INTO comptes (identifiant, prenom, nom, role, mot_de_passe, annee_naissance, classe, rubriques, couleur, cree_par, famille_id)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING id`
   ).bind(identifiant, fiche.prenom, fiche.nom, fiche.role, await hacher(secret), fiche.annee_naissance, fiche.classe,
-    JSON.stringify(fiche.rubriques), fiche.couleur, session.signe).first();
+    JSON.stringify(fiche.rubriques), fiche.couleur, session.signe, familleId).first();
 
   const liens = fiche.role === "parent"
     ? remplacerLiens(env, c.id, corps.enfants)

@@ -1,6 +1,6 @@
 import { json, erreur, corpsJson } from "../../../src/outils.js";
 import { exiger, journal, hacher } from "../../../src/session.js";
-import { lireFiche, codeProvisoire, motDePasseProvisoire, remplacerLiens, codeValide } from "../../../src/comptes.js";
+import { lireFiche, codeProvisoire, motDePasseProvisoire, remplacerLiens, codeValide, ordresSuppressionEnfant } from "../../../src/comptes.js";
 
 // PATCH /api/comptes/:id (administrateur)
 //   { prenom, nom, annee_naissance, classe, rubriques, couleur } -> change la fiche
@@ -49,6 +49,11 @@ export async function onRequestPatch(contexte) {
     ordres.push(env.DB.prepare("DELETE FROM sessions WHERE compte_id = ?").bind(id));
     rendu[avant.role === "enfant" ? "code" : "mot_de_passe_provisoire"] = secret;
   }
+  if ("famille_id" in corps && avant.role !== "administrateur") {
+    const fid = corps.famille_id ? Number(corps.famille_id) : null;
+    if (fid && !(await env.DB.prepare("SELECT 1 FROM familles WHERE id = ?").bind(fid).first())) return erreur(400, "Famille inconnue.");
+    ordres.push(env.DB.prepare("UPDATE comptes SET famille_id = ? WHERE id = ?").bind(fid, id));
+  }
   if ("enfants" in corps && avant.role === "parent") ordres.push(...remplacerLiens(env, id, corps.enfants));
   if ("parents" in corps && avant.role === "enfant") {
     ordres.push(env.DB.prepare("DELETE FROM liens_parents WHERE enfant_id = ?").bind(id));
@@ -61,4 +66,17 @@ export async function onRequestPatch(contexte) {
   ordres.push(journal(env, session.signe, "compte.modifie", avant.identifiant, trace));
   await env.DB.batch(ordres);
   return json({ ok: true, ...rendu });
+}
+
+// DELETE /api/comptes/:id (administrateur) -> efface un enfant et tous ses résultats.
+// (Un adulte ne s'efface pas : on le désactive.)
+export async function onRequestDelete(contexte) {
+  const { session, refus } = await exiger(contexte, "administrateur");
+  if (refus) return refus;
+  const env = contexte.env;
+  const e = await env.DB.prepare("SELECT id, identifiant, prenom, role FROM comptes WHERE id = ?").bind(Number(contexte.params.id)).first();
+  if (!e) return erreur(404, "Compte introuvable.");
+  if (e.role !== "enfant") return erreur(400, "Seul un compte d'enfant s'efface ; un adulte se désactive.");
+  await env.DB.batch([...ordresSuppressionEnfant(env, e.id), journal(env, session.signe, "enfant.supprime", e.identifiant, { prenom: e.prenom })]);
+  return json({ ok: true });
 }

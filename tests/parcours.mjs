@@ -128,3 +128,43 @@ const nc2 = ok(await admin.appel(`comptes/${a.id}`, "PATCH", { code: "4826" }), 
 const enfantA2 = client(); ok(await enfantA2.connexion(a.identifiant, "4826"), "connexion code choisi");
 assert.equal((await enfantA2.appel(`enfants/${a.id}/peche/quiz`, "POST", { chapitre: 0, score: 5, total: 5 })).statut, 400, "pêche fermée");
 console.log("Pêche : tout est bon.");
+
+// --- Le compte famille : invitation, inscription, enfants gérés par les parents, cloisonnement.
+const inv = ok(await admin.appel("invitations", "POST", { nom_famille: `Famille ${suffixe}` }), "invitation nouvelle famille");
+assert.match(inv.code, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+const mdpParent = `essai-${suffixe}-parent`;
+const p1 = client();
+assert.equal((await p1.appel("inscription", "POST", { code: "AAAA-BBBB", prenom: "X", identifiant: `x${suffixe}`, mot_de_passe: mdpParent })).statut, 400, "code faux refusé");
+const ins = ok(await p1.appel("inscription", "POST", { code: inv.code.toLowerCase().replace("-", " "), prenom: "Claire", nom: "Test", identifiant: `claire.${suffixe}`, mot_de_passe: mdpParent }), "inscription");
+assert.equal(ins.role, "parent");
+assert.equal((await client().appel("inscription", "POST", { code: inv.code, prenom: "Y", identifiant: `y${suffixe}`, mot_de_passe: mdpParent })).statut, 400, "code déjà utilisé");
+let F1 = ok(await p1.appel("famille"), "ma famille");
+assert.equal(F1.famille.nom, `Famille ${suffixe}`); assert.equal(F1.parents.length, 1);
+const e1 = ok(await p1.appel("famille/enfants", "POST", { prenom: "Léa", annee_naissance: 2017, classe: "ce2", rubriques: ["ce2", "peche"], code: "1357" }), "parent crée un enfant");
+assert.equal(e1.code, "1357"); assert.match(e1.identifiant, /^lea/);
+const lea = client(); ok(await lea.connexion(e1.identifiant, "1357"), "l'enfant se connecte");
+assert.deepEqual(ok(await p1.appel("moi"), "moi").enfants.map((e) => e.id), [e1.id]);
+ok(await p1.appel(`enfants/${e1.id}`), "le parent voit le tableau");
+ok(await p1.appel(`famille/enfants/${e1.id}`, "PATCH", { rubriques: ["ce2"] }), "le parent change les rubriques");
+const nc3 = ok(await p1.appel(`famille/enfants/${e1.id}`, "PATCH", { nouveau_code: true }), "nouveau code par le parent");
+assert.equal((await lea.appel(`enfants/${e1.id}`)).statut, 401, "ancienne session fermée");
+ok(await client().connexion(e1.identifiant, nc3.code), "connexion avec le nouveau code");
+assert.equal((await p1.appel(`enfants/${a.id}`)).statut, 404, "un parent ne voit pas un enfant d'une autre famille");
+assert.equal((await p1.appel(`famille/enfants/${a.id}`, "PATCH", { rubriques: ["ce2"] })).statut, 404, "ni ne le modifie");
+assert.equal((await p1.appel("comptes")).statut, 403);
+assert.equal((await p1.appel("familles")).statut, 403);
+
+// L'autre parent rejoint la famille avec un code donné par le premier.
+const inv2 = ok(await p1.appel("invitations", "POST", {}), "invitation de l'autre parent");
+const p2 = client();
+ok(await p2.appel("inscription", "POST", { code: inv2.code, prenom: "Marc", nom: "Test", identifiant: `marc.${suffixe}`, mot_de_passe: mdpParent }), "inscription de l'autre parent");
+F1 = ok(await p2.appel("famille"), "famille vue par l'autre parent");
+assert.equal(F1.parents.length, 2); assert.deepEqual(F1.enfants.map((e) => e.id), [e1.id]);
+
+// L'administrateur voit la famille ; un parent supprime son enfant.
+assert.ok(ok(await admin.appel("familles"), "familles").some((f) => f.id === F1.famille.id));
+ok(await admin.appel(`famille?famille=${F1.famille.id}`), "l'administrateur ouvre la famille");
+ok(await p2.appel(`famille/enfants/${e1.id}`, "DELETE", {}), "suppression de l'enfant");
+assert.equal((await client().connexion(e1.identifiant, nc3.code)).statut, 401, "l'enfant supprimé ne se connecte plus");
+assert.equal(ok(await p1.appel("famille"), "famille après suppression").enfants.length, 0);
+console.log("Compte famille : tout est bon.");
