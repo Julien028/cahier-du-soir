@@ -102,4 +102,8 @@ choix des rubriques d'un enfant, onglet Rubriques de l'administrateur, tests (`t
 
 1. Comptes + CE2 et 6e (avec la motivation) + reprise des progressions d'André et Simon. **En ligne depuis le 08/10/2026.**
 2. Pêche, avec un carnet de prises par enfant. **En ligne depuis le 08/10/2026.**
-3. CM1, puis les autres classes.
+3. Toutes les classes du CP à la 3e, et « Maths in English » (3 niveaux : CP-CE2, CM1-6e, 5e-3e).
+   **En ligne depuis le 08/10/2026.** Écrites par des assistants en parallèle, chacune contrôlée par
+   `tests/verifier-programme.mjs` (forme, exactitude des réponses, au moins 300 énoncés différents).
+4. Cours d'anglais en 4 niveaux (`anglais-1` à `anglais-4`) : leçon de la semaine (`lecon`) et questions
+   à écouter (`audio`, lues par la voix du navigateur). En cours le 08/10/2026.

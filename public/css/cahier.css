@@ -94,3 +94,9 @@ figcaption{font-size:14px;color:var(--encre-clair);margin-top:8px;text-align:cen
 .check{display:flex;align-items:center;gap:12px;border-top:1px solid var(--seyes);padding:11px 2px}
 .check input{width:24px;height:24px;flex:0 0 24px}
 .check.ok span{text-decoration:line-through;color:var(--encre-clair)}
+
+/* --- Leçon de la semaine (cours d'anglais). */
+.lecon h4{font-family:"Fraunces",serif;margin:14px 0 6px;font-size:17px}
+.lecon table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:16px}
+.lecon td{border-bottom:1px solid var(--seyes);padding:6px 4px;vertical-align:top}
+.lecon td:first-child{font-weight:700;white-space:nowrap}

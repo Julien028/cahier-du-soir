@@ -3,7 +3,7 @@
 // (RUBRIQUES_PRETES, RUBRIQUES_LIBRES dans regles.js) apparaît ici d'elle-même.
 import { $, esc } from "./outils.js";
 import { derouler } from "./seance.js";
-import { CLASSES, RUBRIQUES_PRETES, RUBRIQUES_LIBRES } from "./regles.js";
+import { CLASSES, RUBRIQUES_PRETES, RUBRIQUES_LIBRES, RUBRIQUES_EN, RUBRIQUES_ANGLAIS } from "./regles.js";
 import { vuePeche } from "./peche.js";
 
 const programmes = {};
@@ -21,6 +21,10 @@ export function vueRubriques(app) {
     <div class="liste-enfants">${CLASSES.map((c) => RUBRIQUES_PRETES.includes(c.code)
       ? `<button class="enfant-ligne" data-r="${c.code}"><span class="grow"><b style="font-size:19px">${esc(c.nom)}</b><br><span class="petit muet">Programme de l'année · ${c.cycle === "college" ? "collège" : "primaire"}</span></span><span>›</span></button>`
       : `<div class="enfant-ligne" style="opacity:.5"><span class="grow"><b style="font-size:19px">${esc(c.nom)}</b><br><span class="petit muet">Pas encore prêt</span></span></div>`).join("")}</div>
+    ${RUBRIQUES_EN.length ? `<h3>Maths in English</h3>
+    <div class="liste-enfants">${RUBRIQUES_EN.map((r) => `<button class="enfant-ligne" data-r="${r.code}"><span class="grow"><b style="font-size:19px">${esc(r.nom)}</b><br><span class="petit muet">Des maths entièrement en anglais</span></span><span>›</span></button>`).join("")}</div>` : ""}
+    ${RUBRIQUES_ANGLAIS.length ? `<h3>Cours d'anglais</h3>
+    <div class="liste-enfants">${RUBRIQUES_ANGLAIS.map((r) => `<button class="enfant-ligne" data-r="${r.code}"><span class="grow"><b style="font-size:19px">${esc(r.nom)}</b><br><span class="petit muet">Une leçon par semaine, vocabulaire, grammaire, écoute, lecture</span></span><span>›</span></button>`).join("")}</div>` : ""}
     <h3>Les autres rubriques</h3>
     <div class="liste-enfants">${RUBRIQUES_LIBRES.map((r) => `<button class="enfant-ligne" data-l="${r.code}"><span class="grow"><b style="font-size:19px">${esc(r.nom)}</b><br><span class="petit muet">Leçons, quiz et carnet</span></span><span>›</span></button>`).join("")}</div>
   </div>`;
@@ -49,6 +53,7 @@ async function vueClasse(app, code, choix = { semaine: 1, jour: 0 }) {
       <h3 style="margin-top:6px">${esc(p.NOM_MAT[mat] || "")}</h3>
       <p class="notion">${mat === "rev" ? "Révision de toute la semaine." : esc(sem[mat] || "")}</p>
       <p class="rituel">${esc(p.rituel || "")} ${p.JOURS[choix.jour].min} minutes.</p>
+      ${sem.lecon ? `<details class="bloc" open><summary>📖 La leçon de la semaine</summary><div class="corps lecon">${sem.lecon}</div></details>` : ""}
       <button class="cta" id="essayer">Essayer cette séance</button>
       <p class="muet petit">Les questions sont tirées au hasard à chaque essai, comme pour les enfants.</p></div>
     <h2>Le programme de l'année</h2>
@@ -61,7 +66,7 @@ async function vueClasse(app, code, choix = { semaine: 1, jour: 0 }) {
   $("#sem").onchange = () => vueClasse(app, code, lire());
   $("#jour").onchange = () => vueClasse(app, code, lire());
   $("#essayer").onclick = async () => {
-    const res = await derouler(app, p.seanceHorsLigne(mat, choix.semaine), { titre: `Aperçu ${p.nom} · ${p.NOM_MAT[mat]}` });
+    const res = await derouler(app, p.seanceHorsLigne(mat, choix.semaine), { titre: `Aperçu ${p.nom} · ${p.NOM_MAT[mat]}`, accord: !String(code).startsWith("maths-en") });
     app.innerHTML = `<div class="carte" style="text-align:center"><h2>${res.score} sur ${res.total}</h2>
       <p class="muet">Aperçu : rien n'a été enregistré.</p>
       <button class="cta" id="encore">Une autre séance</button><button class="cta sec" id="fin">Retour à ${esc(p.nom)}</button></div>`;

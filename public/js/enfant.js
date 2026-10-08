@@ -4,7 +4,7 @@
 import { api } from "./api.js";
 import { $, esc, avatar, pluriel, confettis, annonce } from "./outils.js";
 import { derouler } from "./seance.js";
-import { GRADES, PALIERS, classe } from "./regles.js";
+import { GRADES, PALIERS, classe, nomRubrique } from "./regles.js";
 import { onglets, qui, deconnecter } from "./app.js";
 import { vuePeche } from "./peche.js";
 
@@ -77,6 +77,7 @@ export async function espaceEnfant(app, moi) {
         <h2 style="margin-top:14px">${esc(p.NOM_MAT[mat] || "")}</h2>
         <p class="notion">${rev ? "Des questions qui reprennent tout ce que tu as travaillé cette semaine." : esc(sem[mat] || "")}</p>
         <p class="rituel">${esc(p.rituel || "")} Chaque bonne réponse : +1 ⭐, sans faute : +3 ⭐ en plus.</p>
+        ${sem.lecon ? `<details class="bloc"><summary>📖 La leçon de la semaine</summary><div class="corps lecon">${sem.lecon}</div></details>` : ""}
         <button class="cta" data-seance="${esc(r.code)}">Commencer</button></div>`;
     }).join("");
     const r = T.recompense;
@@ -124,7 +125,7 @@ export async function espaceEnfant(app, moi) {
     const r = T.rubriques.find((x) => x.code === code), p = programmes[code];
     const mat = p.matiereDuJour(r.semaine, r.jour);
     onglets.innerHTML = "";
-    const res = await derouler(app, p.seanceHorsLigne(mat, r.semaine), { titre: p.NOM_MAT[mat] });
+    const res = await derouler(app, p.seanceHorsLigne(mat, r.semaine), { titre: p.NOM_MAT[mat], accord: !String(code).startsWith("maths-en") });
     app.innerHTML = `<div class="chargement"><p>J'enregistre…</p><span class="point"></span><span class="point"></span><span class="point"></span></div>`;
     let g;
     for (let essai = 0; essai < 3 && !g; essai++) {
@@ -149,7 +150,7 @@ export async function espaceEnfant(app, moi) {
     const liste = await api(`enfants/${moi.id}/erreurs`);
     if (!liste.length) { await charger(); return afficher(); }
     onglets.innerHTML = "";
-    const res = await derouler(app, liste.map((e) => e.question), { titre: "Carnet des erreurs" });
+    const res = await derouler(app, liste.map((e) => ({ ...e.question, accord: !e.rubrique.startsWith("maths-en") })), { titre: "Carnet des erreurs" });
     let gain = 0, dernier = null;
     for (let k = 0; k < liste.length; k++) {
       const g = await api(`enfants/${moi.id}/erreurs/${liste[k].id}`, { methode: "POST", corps: { reussie: res.resultats[k] } }).catch(() => null);
@@ -204,4 +205,4 @@ export async function espaceEnfant(app, moi) {
   catch (e) { app.innerHTML = `<div class="carte"><p class="notion">${esc(e.message)}</p><button class="cta" onclick="location.reload()">Réessayer</button></div>`; }
 }
 
-export const nomRubrique = (code) => (code === "peche" ? "La pêche" : classe(code)?.nom || code);
+export { nomRubrique };

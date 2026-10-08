@@ -2,7 +2,7 @@
 // et gère les comptes (création, codes, liens parents-enfants, reprise des anciens cahiers).
 import { api } from "./api.js";
 import { $, esc, avatar, dateFr, pluriel } from "./outils.js";
-import { CLASSES, RUBRIQUES_PRETES, classe } from "./regles.js";
+import { CLASSES, RUBRIQUES_PRETES, rubriquesASeances, classe } from "./regles.js";
 import { onglets, qui, deconnecter } from "./app.js";
 import { nomRubrique } from "./enfant.js";
 import { vueRubriques } from "./rubriques.js";
@@ -22,7 +22,10 @@ export function espaceAdulte(app, moi) {
     qui.innerHTML = `${avatar(moi.prenom, moi.couleur)}<span><b>${esc(moi.prenom)}</b> · ${admin ? "administrateur" : "parent"}</span>
       <button class="lien" id="sortir">Se déconnecter</button>`;
     $("#sortir").onclick = deconnecter;
-    const liste = [["enfants", admin ? "Les enfants" : "Mes enfants"], ...(admin ? [["rubriques", "Rubriques"], ["familles", "Familles"], ["comptes", "Comptes"]] : [["famille", "Ma famille"]]), ["moi", "Mon compte"]];
+    // Ordre voulu par Julien : Mon compte, Comptes, Familles, Les enfants, Rubriques.
+    const liste = admin
+      ? [["moi", "Mon compte"], ["comptes", "Comptes"], ["familles", "Familles"], ["enfants", "Les enfants"], ["rubriques", "Rubriques"]]
+      : [["moi", "Mon compte"], ["famille", "Ma famille"], ["enfants", "Mes enfants"]];
     onglets.innerHTML = liste.map(([v, nom]) => `<button class="onglet" role="tab" aria-selected="${v === vue || (vue === "fiche" && v === "enfants") || (admin && vue === "famille" && v === "familles")}" data-vue="${v}">${nom}</button>`).join("");
     onglets.querySelectorAll(".onglet").forEach((b) => (b.onclick = () => { vue = b.dataset.vue; afficher(); }));
   };
@@ -159,7 +162,7 @@ export function espaceAdulte(app, moi) {
     const comptes = await api("comptes");
     const enfants = comptes.filter((c) => c.role === "enfant"), parents = comptes.filter((c) => c.role === "parent");
     const nomDe = (id) => comptes.find((c) => c.id === id)?.prenom || "?";
-    const casesRubriques = (choisies = []) => `<div class="cases">${RUBRIQUES_PRETES.map((r) => `<label><input type="checkbox" name="rub" value="${r}"${choisies.includes(r) ? " checked" : ""}> ${esc(nomRubrique(r))}</label>`).join("")}
+    const casesRubriques = (choisies = []) => `<div class="cases">${rubriquesASeances().map((r) => `<label><input type="checkbox" name="rub" value="${r}"${choisies.includes(r) ? " checked" : ""}> ${esc(nomRubrique(r))}</label>`).join("")}
       <label><input type="checkbox" name="rub" value="peche"${choisies.includes("peche") ? " checked" : ""}> La pêche</label></div>`;
     const choixClasse = (sel) => `<select class="mini" name="classe">${CLASSES.map((c) => `<option value="${c.code}"${c.code === sel ? " selected" : ""}>${c.nom}</option>`).join("")}</select>`;
     const cases = (liste, nom, choisis = []) => liste.length ? `<div class="cases">${liste.map((c) => `<label><input type="checkbox" name="${nom}" value="${c.id}"${choisis.includes(c.id) ? " checked" : ""}> ${esc(c.prenom)} ${esc(c.nom)}</label>`).join("")}</div>` : `<p class="muet petit">Aucun pour l'instant.</p>`;
@@ -255,7 +258,7 @@ export function espaceAdulte(app, moi) {
         <button class="cta" id="inviter">Créer un code d'invitation</button><div id="code-inv"></div></div>
       ${invitations.length ? `<div class="carte"><h3>Codes pas encore utilisés</h3>${invitations.map((i) => `<p class="petit"><b>${esc(i.code)}</b> — ${i.famille ? "rejoindre " + esc(i.famille) : "nouvelle famille" + (i.nom_famille ? " « " + esc(i.nom_famille) + " »" : "")} · par ${esc(i.cree_par)} · jusqu'au ${dateFr(i.expire_le)}</p>`).join("")}</div>` : ""}
       <h2>Les familles</h2>
-      ${familles.length ? familles.map((f) => `<button class="enfant-ligne" data-f="${f.id}"><span class="grow"><b>${esc(f.nom)}</b><br>
+      ${familles.length ? familles.map((f) => `<button class="enfant-ligne" data-f="${f.id}"><span class="grow"><b>${esc(f.nom)}</b> <span class="muet petit">n° ${f.id}</span><br>
         <span class="petit muet">Parents : ${f.parents.map((p) => esc(p.prenom)).join(", ") || "aucun"} · Enfants : ${f.enfants.map((e) => esc(e.prenom)).join(", ") || "aucun"}</span></span><span>›</span></button>`).join("")
         : `<p class="muet">Aucune famille pour l'instant.</p>`}
     </div>`;
@@ -275,14 +278,14 @@ export function espaceAdulte(app, moi) {
     const q = admin ? `?famille=${fid}` : "";
     const F = await api("famille" + q);
     const choixClasse = (sel) => `<select class="mini" name="classe">${CLASSES.map((c) => `<option value="${c.code}"${c.code === sel ? " selected" : ""}>${c.nom}${RUBRIQUES_PRETES.includes(c.code) ? "" : " (programme pas encore prêt)"}</option>`).join("")}</select>`;
-    const cases = (choisies = []) => `<div class="cases">${RUBRIQUES_PRETES.map((r) => `<label><input type="checkbox" name="rub" value="${r}"${choisies.includes(r) ? " checked" : ""}> ${esc(nomRubrique(r))}</label>`).join("")}
+    const cases = (choisies = []) => `<div class="cases">${rubriquesASeances().map((r) => `<label><input type="checkbox" name="rub" value="${r}"${choisies.includes(r) ? " checked" : ""}> ${esc(nomRubrique(r))}</label>`).join("")}
       <label><input type="checkbox" name="rub" value="peche"${choisies.includes("peche") ? " checked" : ""}> La pêche</label></div>`;
     const formEnfant = (e = {}) => `
       <label class="titre">Prénom</label><input type="text" class="champ" name="prenom" required maxlength="40" value="${esc(e.prenom || "")}">
       <label class="titre">Année de naissance (pour son âge)</label><input type="number" name="annee" min="2005" max="2030" value="${e.annee_naissance || ""}" placeholder="ex. 2016">
       <label class="titre">Classe</label>${choixClasse(e.classe || "ce2")}
       <label class="titre">Ce qu'il ou elle travaille</label>${cases(e.rubriques || [])}
-      <p class="muet petit">Cochez sa classe (et la suivante s'il est à l'aise), et la pêche s'il le souhaite. Programmes prêts : ${RUBRIQUES_PRETES.map(nomRubrique).join(", ")}.</p>`;
+      <p class="muet petit">Cochez sa classe (et la suivante s'il est à l'aise), « Maths in English » pour faire des maths en anglais, et la pêche s'il le souhaite.</p>`;
     const lire = (f) => { const v = Object.fromEntries(new FormData(f)); return { prenom: v.prenom, annee_naissance: v.annee || null, classe: v.classe, rubriques: [...f.querySelectorAll('input[name="rub"]:checked')].map((x) => x.value) }; };
     const montrerCode = (prenom, identifiant, code) => {
       $("#secret").innerHTML = `<div class="secret"><p>Pour se connecter, <b>${esc(prenom)}</b> touche son prénom (ou tape <b>${esc(identifiant)}</b>), puis son code secret :</p>
@@ -293,7 +296,7 @@ export function espaceAdulte(app, moi) {
     app.innerHTML = `<div class="pile">
       ${admin ? `<button class="lien" id="retour">‹ Toutes les familles</button>` : ""}
       <div id="secret"></div>
-      <div class="carte"><h2>${esc(F.famille.nom)}</h2>
+      <div class="carte"><h2>${esc(F.famille.nom)}</h2>${admin ? `<p class="muet petit">Famille n° ${F.famille.id}</p>` : ""}
         <p class="muet">Parents : ${F.parents.map((p) => `${esc(p.prenom)} ${esc(p.nom)} (${esc(p.identifiant)})`).join(", ") || "aucun"}</p>
         <details class="bloc"><summary>Changer le nom de la famille</summary>
           <input type="text" id="nomf" class="champ" maxlength="60" value="${esc(F.famille.nom)}"><button class="cta petit" id="renommer">Enregistrer</button></details>

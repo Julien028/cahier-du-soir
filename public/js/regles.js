@@ -14,9 +14,22 @@ export const CLASSES = [
   { code: "3e", nom: "3e", cycle: "college" },
 ];
 // Les rubriques dont le programme existe déjà sur le site.
-export const RUBRIQUES_PRETES = ["ce2", "6e"];
+export const RUBRIQUES_PRETES = ["cp", "ce1", "ce2", "cm1", "cm2", "6e", "5e", "4e", "3e"];
+// Les rubriques à séances qui ne sont pas une classe : les maths en anglais, une par cycle.
+// Elles se cochent en plus de la classe et fonctionnent comme elle (une séance par soir).
+export const RUBRIQUES_EN = [
+  { code: "maths-en-c2", nom: "Maths in English · CP-CE2" },
+  { code: "maths-en-c3", nom: "Maths in English · CM1-6e" },
+  { code: "maths-en-c4", nom: "Maths in English · 5e-3e" },
+];
+// Les cours d'anglais, par niveau (mêmes séances que les classes, plus une leçon par semaine).
+export const RUBRIQUES_ANGLAIS = [];
 // Les rubriques qui ne sont pas une classe : lues quand on veut, sans séance du soir.
 export const RUBRIQUES_LIBRES = [{ code: "peche", nom: "La pêche" }];
+// Toutes les rubriques qui ont un programme à séances (public/programmes/<code>.js).
+export const rubriquesASeances = () => [...RUBRIQUES_PRETES, ...RUBRIQUES_EN.map((r) => r.code), ...RUBRIQUES_ANGLAIS.map((r) => r.code)];
+export const nomRubrique = (code) =>
+  RUBRIQUES_LIBRES.find((r) => r.code === code)?.nom || RUBRIQUES_EN.find((r) => r.code === code)?.nom || RUBRIQUES_ANGLAIS.find((r) => r.code === code)?.nom || classe(code)?.nom || code;
 export const classe = (code) => CLASSES.find((c) => c.code === code);
 export const cycleDe = (code) => classe(code)?.cycle || "primaire";
 

@@ -1,5 +1,5 @@
 // Règles communes aux comptes.
-import { CLASSES, RUBRIQUES_PRETES } from "../public/js/regles.js";
+import { CLASSES, rubriquesASeances, RUBRIQUES_LIBRES } from "../public/js/regles.js";
 
 export const ROLES = ["administrateur", "parent", "enfant"];
 export const identifiantValide = (v) => /^[a-z0-9._-]{2,60}$/.test(v);
@@ -55,7 +55,7 @@ export function lireFiche(corps, avant = {}) {
     let rub = pris("rubriques");
     if (typeof rub === "string") { try { rub = JSON.parse(rub); } catch { rub = []; } }
     fiche.rubriques = [...new Set((Array.isArray(rub) ? rub : []).map(String))]
-      .filter((r) => RUBRIQUES_PRETES.includes(r) || r === "peche");
+      .filter((r) => rubriquesASeances().includes(r) || RUBRIQUES_LIBRES.some((l) => l.code === r));
     if (!fiche.rubriques.length) return { erreur: "Il faut au moins une rubrique (sa classe, si elle est prête)." };
   }
   return { fiche };
