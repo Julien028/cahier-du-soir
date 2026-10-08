@@ -1,7 +1,7 @@
 import { json, erreur, corpsJson, aujourdhui, ajouterJours } from "../../../src/outils.js";
 import { exiger, journal } from "../../../src/session.js";
 import { peutVoir, tableau, bilanBadges, totalEtoiles } from "../../../src/enfants.js";
-import { etoilesSeance, GAINS, badgesGagnes, grade, cycleDe, missionDuJour, DELAI_ERREUR } from "../../../public/js/regles.js";
+import { etoilesSeance, GAINS, badgesGagnes, grade, cycleDe, missionDuJour, DELAI_ERREUR, THEMES } from "../../../public/js/regles.js";
 
 // Tout ce qui concerne un enfant, sous /api/enfants/:id/…
 //   GET   :id                       tableau de bord (enfant, ses parents, l'administrateur)
@@ -10,6 +10,7 @@ import { etoilesSeance, GAINS, badgesGagnes, grade, cycleDe, missionDuJour, DELA
 //   POST  :id/erreurs/:eid          { reussie } l'enfant retente une erreur
 //   POST  :id/mission               l'enfant a fait sa mission sans écran
 //   POST  :id/mots/lus              l'enfant a lu ses mots
+//   PUT   :id/theme                 { theme } l'univers de ses grades (l'enfant ou ses parents)
 //   PATCH :id/progression           { rubrique, semaine, jour } (parent, administrateur)
 //   POST  :id/recompense            { libelle, objectif }       (parent, administrateur)
 //   POST  :id/recompense/donnee                                  (parent, administrateur)
@@ -107,6 +108,17 @@ export async function onRequest(contexte) {
       if (!lui) return erreur(403, "Seul l'enfant lit ses mots.");
       await env.DB.prepare("UPDATE mots SET lu_le = datetime('now') WHERE enfant_id = ? AND lu_le IS NULL").bind(enfant.id).run();
       return json({ ok: true });
+    }
+
+    // L'univers des grades : choisi par l'enfant (ou ses parents).
+    case "PUT theme": {
+      const theme = String(corps.theme || "");
+      if (!THEMES[theme]) return erreur(400, "Univers inconnu.");
+      await env.DB.batch([
+        env.DB.prepare("UPDATE comptes SET theme = ? WHERE id = ?").bind(theme, enfant.id),
+        journal(env, session.signe, "theme", enfant.identifiant, { theme }),
+      ]);
+      return json({ ok: true, grade: grade(await totalEtoiles(env, enfant.id), cycleDe(enfant.classe), theme) });
     }
 
     case "PATCH progression": {
@@ -229,12 +241,13 @@ async function apresGain(env, enfant, badgesAvant, totalAvant, gain) {
   const bilan = await bilanBadges(env, enfant.id);
   const apres = badgesGagnes(bilan);
   const cycle = cycleDe(enfant.classe);
-  const g0 = grade(totalAvant, cycle), g1 = grade(bilan.etoiles, cycle);
+  const g0 = grade(totalAvant, cycle, enfant.theme), g1 = grade(bilan.etoiles, cycle, enfant.theme);
   return {
     gain,
     etoiles: bilan.etoiles,
     grade: g1,
     nouveauGrade: g1.niveau > g0.niveau ? g1.nom : null,
+    nouveauGradeIcone: g1.niveau > g0.niveau ? g1.icone : null,
     nouveauxBadges: apres.filter((b) => !badgesAvant.includes(b)),
   };
 }

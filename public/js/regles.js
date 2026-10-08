@@ -49,24 +49,49 @@ export const GAINS = {
 export const etoilesSeance = (score, total) =>
   score * GAINS.bonneReponse + (total > 0 && score === total ? GAINS.sansFaute : 0);
 
-// --- Les grades. Le collège monte dans la mythologie grecque, qu'il étudie en 6e ;
-// le primaire monte à bord d'un bateau.
+// --- Les univers : chaque enfant choisit le sien, et ses 7 grades le suivent.
+// Sans choix : les marins au primaire, la mythologie grecque au collège (étudiée en 6e).
+export const THEMES = {
+  ferme: { nom: "La ferme", icone: "🚜", grades: [
+    ["Apprenti fermier", "🐣"], ["Gardien des poules", "🐔"], ["Berger", "🐑"], ["Conducteur de tracteur", "🚜"],
+    ["Pilote de télescopique", "🏗️"], ["Maître de la moisson", "🌾"], ["Chef de la ferme", "👑"]] },
+  marin: { nom: "Les marins", icone: "⛵", grades: [
+    ["Moussaillon", "⚓"], ["Matelot", "🪢"], ["Timonier", "🧭"], ["Navigateur", "🗺️"],
+    ["Capitaine", "⛵"], ["Explorateur", "🔭"], ["Amiral", "🎖️"]] },
+  mythologie: { nom: "La mythologie", icone: "🏛️", grades: [
+    ["Apprenti scribe", "📜"], ["Messager", "🕊️"], ["Hoplite", "🛡️"], ["Héros", "⚔️"],
+    ["Demi-dieu", "⚡"], ["Sage de l'Olympe", "🦉"], ["Olympien", "🏛️"]] },
+  espace: { nom: "L'espace", icone: "🚀", grades: [
+    ["Apprenti astronome", "🔭"], ["Cadet de l'espace", "🌙"], ["Pilote de fusée", "🚀"], ["Explorateur de la Lune", "🌕"],
+    ["Commandant de station", "🛰️"], ["Voyageur des étoiles", "✨"], ["Amiral de la galaxie", "🌌"]] },
+  animaux: { nom: "Les animaux", icone: "🦁", grades: [
+    ["Petit lapin", "🐰"], ["Renard malin", "🦊"], ["Loup agile", "🐺"], ["Ours costaud", "🐻"],
+    ["Aigle royal", "🦅"], ["Lion courageux", "🦁"], ["Dragon légendaire", "🐉"]] },
+  sport: { nom: "Le sport", icone: "⚽", grades: [
+    ["Débutant", "👟"], ["Espoir", "🌱"], ["Titulaire", "🎽"], ["Capitaine d'équipe", "🥉"],
+    ["Champion régional", "🥈"], ["Champion de France", "🥇"], ["Légende", "🏆"]] },
+};
+export const themeDe = (theme, cycle = "primaire") => (THEMES[theme] ? theme : cycle === "college" ? "mythologie" : "marin");
+// Compatibilité : les noms de grades par cycle (anciens écrans).
 export const GRADES = {
-  primaire: ["Moussaillon", "Matelot", "Timonier", "Navigateur", "Capitaine", "Explorateur", "Amiral"],
-  college: ["Apprenti scribe", "Messager", "Hoplite", "Héros", "Demi-dieu", "Sage de l'Olympe", "Olympien"],
+  primaire: THEMES.marin.grades.map((g) => g[0]),
+  college: THEMES.mythologie.grades.map((g) => g[0]),
 };
 // Étoiles nécessaires pour chaque grade. Une séance réussie rapporte 5 à 9 étoiles :
 // on change de grade toutes les deux à six semaines environ.
 export const PALIERS = [0, 40, 120, 250, 450, 700, 1000];
 
-export function grade(etoiles, cycle = "primaire") {
-  const noms = GRADES[cycle] || GRADES.primaire;
+export function grade(etoiles, cycle = "primaire", theme = null) {
+  const t = THEMES[themeDe(theme, cycle)];
+  const noms = t.grades.map((g) => g[0]);
   let n = 0;
   while (n + 1 < PALIERS.length && etoiles >= PALIERS[n + 1]) n++;
   const suivant = n + 1 < PALIERS.length ? PALIERS[n + 1] : null;
   return {
     niveau: n + 1,
     nom: noms[n],
+    icone: t.grades[n][1],
+    theme: themeDe(theme, cycle),
     suivantNom: suivant === null ? null : noms[n + 1],
     manque: suivant === null ? 0 : suivant - etoiles,
     // Avancée vers le grade suivant, de 0 à 1.

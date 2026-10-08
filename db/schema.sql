@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS comptes (
   rubriques        TEXT NOT NULL DEFAULT '[]', -- enfant : JSON, ex. ["ce2","cm1"]
   couleur          TEXT NOT NULL DEFAULT '#1E3A6E',
   famille_id       INTEGER REFERENCES familles(id), -- parent ou enfant (ajouté le 08/10/2026)
+  theme            TEXT,                    -- enfant : univers de ses grades (ferme, marin…), ajouté le 08/10/2026
   actif            INTEGER NOT NULL DEFAULT 1,
   cree_le          TEXT NOT NULL DEFAULT (datetime('now')),
   cree_par         TEXT

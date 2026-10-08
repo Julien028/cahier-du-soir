@@ -59,7 +59,7 @@ export function espaceAdulte(app, moi) {
       const faites = classes.filter((r) => r.faiteAujourdhui).length;
       return `<button class="enfant-ligne" data-id="${T.enfant.id}">${avatar(T.enfant.prenom, T.enfant.couleur, true)}
         <span class="grow"><b style="font-size:19px">${esc(T.enfant.prenom)}</b> <span class="muet">${esc(classe(T.enfant.classe)?.nom || "")}${T.enfant.age ? " · " + T.enfant.age + " ans" : ""}</span><br>
-        <span class="petit">${esc(T.grade.nom)} · ⭐ ${T.etoiles} · 🔥 ${T.serie}</span><br>
+        <span class="petit">${T.grade.icone || ""} ${esc(T.grade.nom)} · ⭐ ${T.etoiles} · 🔥 ${T.serie}</span><br>
         <span class="petit ${faites === classes.length ? "fait" : "muet"}">Ce soir : ${!classes.length ? "pas de séance du soir" : faites === classes.length ? "✅ séance faite" : faites ? `${faites} séance sur ${classes.length}` : "pas encore fait"}${T.mission.faite ? " · 🌳 mission faite" : ""}</span></span>
         <span aria-hidden="true">›</span></button>`;
     }).join("")}</div>`;
@@ -76,7 +76,7 @@ export function espaceAdulte(app, moi) {
       <button class="lien" id="retour">‹ Retour à la liste</button>
       <div class="carte"><div class="bandeau">${avatar(T.enfant.prenom, T.enfant.couleur, true)}<div>
         <h2>${esc(T.enfant.prenom)} ${esc(T.enfant.nom || "")}</h2>
-        <div class="muet">${esc(classe(T.enfant.classe)?.nom || "")}${T.enfant.age ? " · " + T.enfant.age + " ans" : ""} · ${esc(T.grade.nom)}</div></div></div>
+        <div class="muet">${esc(classe(T.enfant.classe)?.nom || "")}${T.enfant.age ? " · " + T.enfant.age + " ans" : ""} · ${T.grade.icone || ""} ${esc(T.grade.nom)}</div></div></div>
         <div class="stats">
           <div class="stat"><b>⭐ ${T.etoiles}</b><span>étoiles</span></div>
           <div class="stat"><b>🔥 ${T.serie}</b><span>soirs d'affilée (record ${T.meilleureSerie})</span></div>

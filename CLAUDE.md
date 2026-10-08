@@ -58,7 +58,7 @@ mots simples, et évite le jargon quand un mot courant suffit.
   puis **`npm run deploy`** (la publication n'est pas automatique).
 - Changement de la base : l'ajouter à `db/schema.sql` (rejouable) et, si c'est une colonne sur une
   table existante, écrire aussi `db/migrations/AAAA-MM-JJ-quoi.sql` ; passer `npm run db:schema`
-  puis la migration. Migration `2026-10-08-familles.sql` passée en ligne le 08/10/2026.
+  puis la migration. Migrations `2026-10-08-familles.sql` et `2026-10-08-themes.sql` passées en ligne le 08/10/2026.
 - Sur ce poste, `curl` peut échouer (erreur 35, contrôle de révocation Windows hors ligne) :
   ajouter `--ssl-no-revoke`.
 - Premier administrateur : `npm run compte -- --enligne` (Julien tape lui-même son mot de passe).

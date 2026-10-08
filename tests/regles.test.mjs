@@ -39,3 +39,13 @@ test("mission du jour : la même toute la journée, change d'un jour à l'autre"
   const semaine = new Set(["01", "02", "03", "04", "05", "06", "07"].map((j) => missionDuJour(`2026-10-${j}`, "primaire", 1)));
   assert.ok(semaine.size >= 6);
 });
+
+test("univers : grades selon le thème choisi, et par défaut selon le cycle", async () => {
+  const { THEMES } = await import("../public/js/regles.js");
+  assert.equal(grade(0, "primaire", "ferme").nom, "Apprenti fermier");
+  assert.equal(grade(250, "college", "ferme").nom, "Conducteur de tracteur");
+  assert.equal(grade(0, "primaire").nom, "Moussaillon");
+  assert.equal(grade(0, "college").nom, "Apprenti scribe");
+  assert.equal(grade(0, "college", "inconnu").theme, "mythologie");
+  for (const t of Object.values(THEMES)) assert.equal(t.grades.length, PALIERS.length);
+});

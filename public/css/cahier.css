@@ -101,3 +101,7 @@ figcaption{font-size:14px;color:var(--encre-clair);margin-top:8px;text-align:cen
 .lecon td{border-bottom:1px solid var(--seyes);padding:6px 4px;vertical-align:top}
 .lecon td:first-child{font-weight:700}
 .enonce.long{font-size:17.5px;line-height:1.5}
+
+/* --- Mon univers : la tuile choisie. */
+.tuile.choisi{border-color:var(--or);border-width:2.5px;background:var(--or-clair)}
+.tuile small{font-size:13px;color:#8A6400;font-weight:700}

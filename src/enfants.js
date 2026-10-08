@@ -1,13 +1,13 @@
 // Ce qu'on sait d'un enfant : qui peut le voir, et son tableau de bord.
 import {
-  grade, serie, meilleureSerie, BADGES, badgesGagnes, missionDuJour, cycleDe, PALIERS,
+  grade, serie, meilleureSerie, BADGES, badgesGagnes, missionDuJour, cycleDe, PALIERS, themeDe,
 } from "../public/js/regles.js";
 
 // Qui peut voir un enfant : l'administrateur, ses parents, et lui-même.
 export async function peutVoir(env, session, enfantId) {
   if (!Number.isInteger(enfantId)) return null;
   const enfant = await env.DB.prepare(
-    "SELECT id, identifiant, prenom, nom, annee_naissance, classe, rubriques, couleur, actif, famille_id FROM comptes WHERE id = ? AND role = 'enfant'"
+    "SELECT id, identifiant, prenom, nom, annee_naissance, classe, rubriques, couleur, actif, famille_id, theme FROM comptes WHERE id = ? AND role = 'enfant'"
   ).bind(enfantId).first();
   if (!enfant) return null;
   if (session.role === "administrateur") return enfant;
@@ -75,7 +75,7 @@ export async function tableau(env, enfant, aujourdhui) {
     enfant: {
       id, prenom: enfant.prenom, nom: enfant.nom, classe: enfant.classe, couleur: enfant.couleur,
       age: enfant.annee_naissance ? Number(aujourdhui.slice(0, 4)) - enfant.annee_naissance : null,
-      annee_naissance: enfant.annee_naissance, rubriques, cycle,
+      annee_naissance: enfant.annee_naissance, rubriques, cycle, theme: themeDe(enfant.theme, cycle),
     },
     aujourdhui,
     rubriques: rubriques.map((r) => {
@@ -84,7 +84,7 @@ export async function tableau(env, enfant, aujourdhui) {
       return { code: r, semaine: p.semaine, jour: p.jour, faiteAujourdhui: faite };
     }),
     etoiles,
-    grade: grade(etoiles, cycle),
+    grade: grade(etoiles, cycle, enfant.theme),
     paliers: PALIERS,
     serie: serie(bilan.dates, aujourdhui),
     meilleureSerie: bilan.meilleureSerie,

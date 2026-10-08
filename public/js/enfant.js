@@ -4,7 +4,7 @@
 import { api } from "./api.js";
 import { $, esc, avatar, pluriel, confettis, annonce } from "./outils.js";
 import { derouler } from "./seance.js";
-import { GRADES, PALIERS, classe, nomRubrique } from "./regles.js";
+import { THEMES, PALIERS, classe, nomRubrique } from "./regles.js";
 import { onglets, qui, deconnecter } from "./app.js";
 import { vuePeche } from "./peche.js";
 
@@ -47,7 +47,7 @@ export async function espaceEnfant(app, moi) {
       <div class="bandeau">${avatar(T.enfant.prenom, T.enfant.couleur, true)}
         <div style="flex:1">
           <div class="muet">Bonjour ${esc(T.enfant.prenom)}, tu es</div>
-          <div class="grade">${esc(g.nom)}</div>
+          <div class="grade">${g.icone || ""} ${esc(g.nom)}</div>
           <div class="jauge"><i style="width:${Math.round(g.avancee * 100)}%"></i></div>
           <div class="muet petit" style="margin-top:4px"><span class="etoiles">⭐ ${T.etoiles}</span>
             ${g.suivantNom ? ` · encore ${g.manque} ⭐ pour devenir <b>${esc(g.suivantNom)}</b>` : " · le plus haut grade !"}</div>
@@ -169,24 +169,33 @@ export async function espaceEnfant(app, moi) {
 
   // Les annonces après un gain : nouveau grade, puis chaque nouveau badge.
   async function feter(g) {
-    if (g.nouveauGrade) { confettis(120); await annonce({ icone: "🎖️", titre: `Tu deviens ${g.nouveauGrade} !`, texte: "Tu montes en grade. Continue comme ça !" }); }
+    if (g.nouveauGrade) { confettis(120); await annonce({ icone: g.nouveauGradeIcone || "🎖️", titre: `Tu deviens ${g.nouveauGrade} !`, texte: "Tu montes en grade. Continue comme ça !" }); }
     for (const code of g.nouveauxBadges || []) {
       const b = (T?.badges || []).find((x) => x.code === code);
       await annonce({ icone: b?.icone || "🏅", titre: `Nouveau badge : ${b?.nom || code}`, texte: b?.texte || "" });
     }
   }
 
-  // --- Mes badges et l'échelle des grades.
+  // --- Mes badges, mon univers et l'échelle des grades.
   function vueBadges() {
-    const noms = GRADES[T.enfant.cycle] || GRADES.primaire;
+    const theme = THEMES[T.grade.theme];
     app.innerHTML = `<div class="pile">
       ${bandeau()}
+      <div class="carte"><h2>Mon univers</h2>
+        <p class="muet">Choisis ton univers : tes grades changent avec lui. Tes étoiles, elles, restent les mêmes.</p>
+        <div class="tuiles">${Object.entries(THEMES).map(([code, t]) => `<button class="tuile${code === T.grade.theme ? " choisi" : ""}" data-theme="${code}">
+          <span style="font-size:38px">${t.icone}</span>${esc(t.nom)}${code === T.grade.theme ? "<small>✓ mon univers</small>" : ""}</button>`).join("")}</div></div>
       <h2>Mes badges</h2>
       <div class="badges">${T.badges.map((b) => `<div class="badge${b.gagne ? "" : " non"}"><div class="ico">${b.icone}</div><b>${esc(b.nom)}</b><span>${esc(b.texte)}</span></div>`).join("")}</div>
       <h2>Les grades</h2>
-      <div class="carte">${noms.map((n, i) => `<div class="sem" style="display:flex;justify-content:space-between;${i + 1 === T.grade.niveau ? "font-weight:700;color:var(--marge)" : i + 1 > T.grade.niveau ? "opacity:.55" : ""}">
-        <span>${i + 1 < T.grade.niveau ? "✅" : i + 1 === T.grade.niveau ? "👉" : "🔒"} ${esc(n)}</span><span>${PALIERS[i]} ⭐</span></div>`).join("")}</div>
+      <div class="carte">${theme.grades.map(([n, ico], i) => `<div class="sem" style="display:flex;justify-content:space-between;${i + 1 === T.grade.niveau ? "font-weight:700;color:var(--marge)" : i + 1 > T.grade.niveau ? "opacity:.55" : ""}">
+        <span>${i + 1 < T.grade.niveau ? "✅" : i + 1 === T.grade.niveau ? "👉" : "🔒"} ${ico} ${esc(n)}</span><span>${PALIERS[i]} ⭐</span></div>`).join("")}</div>
     </div>`;
+    app.querySelectorAll("[data-theme]").forEach((b) => (b.onclick = async () => {
+      if (b.dataset.theme === T.grade.theme) return;
+      try { await api(`enfants/${moi.id}/theme`, { methode: "PUT", corps: { theme: b.dataset.theme } }); await charger(); vueBadges(); }
+      catch (e) { alert(e.message); }
+    }));
   }
 
   // --- Mon programme : l'année de chaque rubrique, la semaine en cours en évidence.

@@ -168,3 +168,14 @@ ok(await p2.appel(`famille/enfants/${e1.id}`, "DELETE", {}), "suppression de l'e
 assert.equal((await client().connexion(e1.identifiant, nc3.code)).statut, 401, "l'enfant supprimé ne se connecte plus");
 assert.equal(ok(await p1.appel("famille"), "famille après suppression").enfants.length, 0);
 console.log("Compte famille : tout est bon.");
+
+// --- L'univers des grades : l'enfant le choisit, un parent peut aussi.
+const th = ok(await admin.appel("comptes", "POST", { role: "enfant", prenom: `Theo${suffixe}`, classe: "ce2", rubriques: ["ce2"] }), "enfant pour l'univers");
+const theo = client(); ok(await theo.connexion(th.identifiant, th.code), "connexion");
+assert.equal(ok(await theo.appel(`enfants/${th.id}`), "tableau").grade.nom, "Moussaillon");
+const gt = ok(await theo.appel(`enfants/${th.id}/theme`, "PUT", { theme: "ferme" }), "choix de l'univers");
+assert.equal(gt.grade.nom, "Apprenti fermier");
+assert.equal(ok(await theo.appel(`enfants/${th.id}`), "tableau").enfant.theme, "ferme");
+assert.equal((await theo.appel(`enfants/${th.id}/theme`, "PUT", { theme: "pirates" })).statut, 400, "univers inconnu refusé");
+assert.equal((await theo.appel(`enfants/${a.id}/theme`, "PUT", { theme: "espace" })).statut, 404, "pas l'univers d'un autre");
+console.log("Univers : tout est bon.");
