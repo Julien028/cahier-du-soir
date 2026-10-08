@@ -10,7 +10,11 @@ export async function onRequestGet(contexte) {
   const env = contexte.env;
   let enfants = [];
   if (session.role === "administrateur") {
-    enfants = (await env.DB.prepare("SELECT id, prenom, nom, classe, couleur FROM comptes WHERE role = 'enfant' AND actif = 1 ORDER BY prenom").all()).results;
+    // Tous les enfants, avec leur famille, pour les ranger famille par famille.
+    enfants = (await env.DB.prepare(
+      `SELECT c.id, c.prenom, c.nom, c.classe, c.couleur, c.famille_id, f.nom AS famille
+         FROM comptes c LEFT JOIN familles f ON f.id = c.famille_id
+        WHERE c.role = 'enfant' AND c.actif = 1 ORDER BY f.nom IS NULL, f.nom, c.prenom`).all()).results;
   } else if (session.role === "parent") {
     enfants = (await env.DB.prepare(
       `SELECT id, prenom, nom, classe, couleur FROM comptes
@@ -21,6 +25,7 @@ export async function onRequestGet(contexte) {
   return json({
     id: session.id, identifiant: session.identifiant, prenom: session.prenom, nom: session.nom,
     role: session.role, couleur: session.couleur, famille_id: session.famille_id, aujourdhui: aujourdhui(), enfants,
+    famille: session.famille_id ? (await env.DB.prepare("SELECT nom FROM familles WHERE id = ?").bind(session.famille_id).first())?.nom || null : null,
   });
 }
 

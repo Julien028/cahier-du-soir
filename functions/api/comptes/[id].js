@@ -49,7 +49,8 @@ export async function onRequestPatch(contexte) {
     ordres.push(env.DB.prepare("DELETE FROM sessions WHERE compte_id = ?").bind(id));
     rendu[avant.role === "enfant" ? "code" : "mot_de_passe_provisoire"] = secret;
   }
-  if ("famille_id" in corps && avant.role !== "administrateur") {
+  // Un administrateur peut aussi faire partie d'une famille (la sienne) : il y est parent.
+  if ("famille_id" in corps) {
     const fid = corps.famille_id ? Number(corps.famille_id) : null;
     if (fid && !(await env.DB.prepare("SELECT 1 FROM familles WHERE id = ?").bind(fid).first())) return erreur(400, "Famille inconnue.");
     ordres.push(env.DB.prepare("UPDATE comptes SET famille_id = ? WHERE id = ?").bind(fid, id));

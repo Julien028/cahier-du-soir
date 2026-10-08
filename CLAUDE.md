@@ -15,7 +15,9 @@ mots simples, et évite le jargon quand un mot courant suffit.
   journal des actions. Compte Cloudflare `bretonvilliers28@gmail.com`, GitHub `Julien028`,
   dépôt privé `Julien028/cahier-du-soir`, branche `master`.
 - Comptes :
-  - **administrateur** (Julien) : voit et modifie tout ; invite les nouvelles familles.
+  - **administrateur** (Julien) : voit et modifie tout ; invite les nouvelles familles. Il peut aussi
+    faire partie de sa famille (Comptes > sa carte > « Ma famille ») : il a alors l'onglet « Ma famille ».
+    « Les enfants » est rangé famille par famille.
   - **enfant** : prénom, âge, classe, rubriques choisies (sa classe, pêche…). Connexion
     en touchant son prénom puis un **code de 4 chiffres** ; la tablette s'en souvient.
     Ne voit que ses propres résultats.

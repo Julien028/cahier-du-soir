@@ -188,3 +188,15 @@ assert.equal((await cSup.appel("moi")).statut, 401, "sa session est fermée");
 assert.equal((await client().connexion(pSup.identifiant, pSup.mot_de_passe_provisoire)).statut, 401, "il ne se connecte plus");
 assert.equal((await admin.appel("comptes/1", "DELETE", {})).statut, 400, "l'administrateur ne se supprime pas");
 console.log("Suppression d'un parent : tout est bon.");
+
+// --- L'administrateur membre d'une famille : « Ma famille » sans préciser laquelle.
+const famAdmin = ok(await admin.appel("familles"), "familles").at(-1);
+const moiAdmin = ok(await admin.appel("moi"), "moi admin");
+ok(await admin.appel(`comptes/${moiAdmin.id}`, "PATCH", { famille_id: famAdmin.id }), "l'administrateur rejoint une famille");
+const FA = ok(await admin.appel("famille"), "ma famille (administrateur)");
+assert.equal(FA.famille.id, famAdmin.id);
+assert.ok(FA.parents.some((p) => p.id === moiAdmin.id), "l'administrateur apparaît parmi les parents");
+const enfA = ok(await admin.appel("famille/enfants", "POST", { prenom: `Nina${suffixe}`, classe: "cm1", rubriques: ["cm1"] }), "l'administrateur ajoute un enfant à sa famille");
+assert.ok(ok(await admin.appel("moi"), "moi").enfants.some((e) => e.id === enfA.id && e.famille_id === famAdmin.id), "enfant rangé dans la famille");
+ok(await admin.appel(`comptes/${moiAdmin.id}`, "PATCH", { famille_id: null }), "l'administrateur quitte la famille");
+console.log("Administrateur dans sa famille : tout est bon.");

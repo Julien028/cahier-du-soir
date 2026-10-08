@@ -16,6 +16,7 @@ async function programme(code) {
 
 export function espaceAdulte(app, moi) {
   const admin = moi.role === "administrateur";
+  let famOuverte = null; // la famille ouverte par l'administrateur depuis l'onglet Familles
   let vue = "enfants";
 
   const entete = () => {
@@ -24,9 +25,9 @@ export function espaceAdulte(app, moi) {
     $("#sortir").onclick = deconnecter;
     // Ordre voulu par Julien : Mon compte, Comptes, Familles, Les enfants, Rubriques.
     const liste = admin
-      ? [["moi", "Mon compte"], ["comptes", "Comptes"], ["familles", "Familles"], ["enfants", "Les enfants"], ["rubriques", "Rubriques"]]
+      ? [["moi", "Mon compte"], ["comptes", "Comptes"], ["familles", "Familles"], ...(moi.famille_id ? [["famille", "Ma famille"]] : []), ["enfants", "Les enfants"], ["rubriques", "Rubriques"]]
       : [["moi", "Mon compte"], ["famille", "Ma famille"], ["enfants", "Mes enfants"]];
-    onglets.innerHTML = liste.map(([v, nom]) => `<button class="onglet" role="tab" aria-selected="${v === vue || (vue === "fiche" && v === "enfants") || (admin && vue === "famille" && v === "familles")}" data-vue="${v}">${nom}</button>`).join("");
+    onglets.innerHTML = liste.map(([v, nom]) => `<button class="onglet" role="tab" aria-selected="${v === vue || (vue === "fiche" && v === "enfants") || (admin && vue === "famille" && v === "familles" && famOuverte && famOuverte !== moi.famille_id)}" data-vue="${v}">${nom}</button>`).join("");
     onglets.querySelectorAll(".onglet").forEach((b) => (b.onclick = () => { vue = b.dataset.vue; afficher(); }));
   };
   const afficher = async (arg) => {
@@ -54,7 +55,7 @@ export function espaceAdulte(app, moi) {
       return;
     }
     const tableaux = await Promise.all(m.enfants.map((e) => api(`enfants/${e.id}`)));
-    app.innerHTML = `<div class="liste-enfants">${tableaux.map((T) => {
+    const ligne = (T) => {
       const classes = T.rubriques.filter((r) => r.code !== "peche");
       const faites = classes.filter((r) => r.faiteAujourdhui).length;
       return `<button class="enfant-ligne" data-id="${T.enfant.id}">${avatar(T.enfant.prenom, T.enfant.couleur, true)}
@@ -62,7 +63,20 @@ export function espaceAdulte(app, moi) {
         <span class="petit">${T.grade.icone || ""} ${esc(T.grade.nom)} · ⭐ ${T.etoiles} · 🔥 ${T.serie}</span><br>
         <span class="petit ${faites === classes.length ? "fait" : "muet"}">Ce soir : ${!classes.length ? "pas de séance du soir" : faites === classes.length ? "✅ séance faite" : faites ? `${faites} séance sur ${classes.length}` : "pas encore fait"}${T.mission.faite ? " · 🌳 mission faite" : ""}</span></span>
         <span aria-hidden="true">›</span></button>`;
-    }).join("")}</div>`;
+    };
+    // Un parent : ses enfants. L'administrateur : tous les enfants, famille par famille (la sienne d'abord).
+    const groupes = [];
+    m.enfants.forEach((e, i) => {
+      const cle = e.famille_id || 0;
+      let g = groupes.find((x) => x.cle === cle);
+      if (!g) groupes.push((g = { cle, titre: e.famille ? `🏠 ${esc(e.famille)}` : "Sans famille", liste: [] }));
+      g.liste.push(tableaux[i]);
+    });
+    groupes.sort((a, b) => (b.cle === moi.famille_id) - (a.cle === moi.famille_id) || (a.cle === 0) - (b.cle === 0));
+    app.innerHTML = admin
+      ? groupes.map((g) => `<h3 style="margin:18px 0 10px">${g.titre}${g.cle && g.cle === moi.famille_id ? " <span class=\"muet petit\">(ma famille)</span>" : ""}</h3>
+          <div class="liste-enfants">${g.liste.map(ligne).join("")}</div>`).join("")
+      : `<div class="liste-enfants">${tableaux.map(ligne).join("")}</div>`;
     app.querySelectorAll(".enfant-ligne").forEach((b) => (b.onclick = () => { vue = "fiche"; afficher(Number(b.dataset.id)); }));
   }
 
@@ -199,7 +213,10 @@ export function espaceAdulte(app, moi) {
         <p class="muet petit">Créé le ${dateFr(c.cree_le)}${c.derniere_connexion ? " · dernière connexion le " + dateFr(c.derniere_connexion) : " · jamais connecté"}
           ${c.role === "enfant" ? ` · rubriques : ${c.rubriques.map(nomRubrique).join(", ") || "aucune"} · parents : ${c.parents.map(nomDe).join(", ") || "aucun"}` : ""}
           ${c.role === "parent" ? ` · enfants : ${c.enfants.map(nomDe).join(", ") || "aucun"}` : ""}</p>
-        ${c.role === "administrateur" ? "" : `<form data-modif="${c.id}">
+        ${c.role === "administrateur" ? (c.id === moi.id ? `<form id="ma-famille">
+          <label class="titre">Ma famille (pour avoir aussi l'onglet « Ma famille », comme un parent)</label>
+          <select class="mini" name="famille"><option value="">Aucune</option>${familles.map((fa) => `<option value="${fa.id}"${fa.id === c.famille_id ? " selected" : ""}>${esc(fa.nom)} (n° ${fa.id})</option>`).join("")}</select>
+          <button class="cta petit" type="submit">Enregistrer</button></form>` : "") : `<form data-modif="${c.id}">
           <label class="titre">Prénom</label><input type="text" class="champ" name="prenom" value="${esc(c.prenom)}" maxlength="40">
           <label class="titre">Nom</label><input type="text" class="champ" name="nom" value="${esc(c.nom)}" maxlength="60">
           ${c.role === "enfant" ? `<label class="titre">Année de naissance</label><input type="number" name="annee" value="${c.annee_naissance || ""}" min="2005" max="2030">
@@ -247,6 +264,11 @@ export function espaceAdulte(app, moi) {
         : { prenom: v.prenom, nom: v.nom, enfants: coches(f, "enf"), famille_id: v.famille ? Number(v.famille) : null };
       try { await api(`comptes/${c.id}`, { methode: "PATCH", corps }); await vueComptes(); } catch (x) { alert(x.message); }
     }));
+    if ($("#ma-famille")) $("#ma-famille").onsubmit = async (e) => {
+      e.preventDefault();
+      const v = new FormData(e.target).get("famille");
+      try { await api(`comptes/${moi.id}`, { methode: "PATCH", corps: { famille_id: v ? Number(v) : null } }); location.reload(); } catch (x) { alert(x.message); }
+    };
     app.querySelectorAll("[data-secret]").forEach((b) => (b.onclick = async () => {
       const c = comptes.find((x) => x.id === Number(b.dataset.secret));
       if (!confirm(`Faire un nouveau ${c.role === "enfant" ? "code" : "mot de passe"} pour ${c.prenom} ? L'ancien ne marchera plus.`)) return;
@@ -288,12 +310,14 @@ export function espaceAdulte(app, moi) {
           <p class="petit">Valable ${r.jours} jours, pour une seule inscription.</p></div>`;
       } catch (e) { alert(e.message); }
     };
-    app.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { vue = "famille"; afficher(Number(b.dataset.f)); }));
+    app.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { vue = "famille"; famOuverte = Number(b.dataset.f); afficher(famOuverte); }));
   }
 
   // --- Une famille : ses parents, ses enfants, et leur gestion. Pour un parent, la sienne ;
   // pour l'administrateur, celle qu'il a ouverte (fid).
   async function vueFamille(fid) {
+    if (admin && !fid) fid = moi.famille_id;
+    if (admin && fid === moi.famille_id) famOuverte = null;
     const q = admin ? `?famille=${fid}` : "";
     const F = await api("famille" + q);
     const choixClasse = (sel) => `<select class="mini" name="classe">${CLASSES.map((c) => `<option value="${c.code}"${c.code === sel ? " selected" : ""}>${c.nom}${RUBRIQUES_PRETES.includes(c.code) ? "" : " (programme pas encore prêt)"}</option>`).join("")}</select>`;
@@ -313,7 +337,7 @@ export function espaceAdulte(app, moi) {
     };
 
     app.innerHTML = `<div class="pile">
-      ${admin ? `<button class="lien" id="retour">‹ Toutes les familles</button>` : ""}
+      ${admin && fid !== moi.famille_id ? `<button class="lien" id="retour">‹ Toutes les familles</button>` : ""}
       <div id="secret"></div>
       <div class="carte"><h2>${esc(F.famille.nom)}</h2>${admin ? `<p class="muet petit">Famille n° ${F.famille.id}</p>` : ""}
         <p class="muet">Parents : ${F.parents.map((p) => `${esc(p.prenom)} ${esc(p.nom)} (${esc(p.identifiant)})`).join(", ") || "aucun"}</p>

@@ -15,7 +15,9 @@ export async function onRequest(contexte) {
   const { session, refus } = await exiger(contexte, ["administrateur", "parent"]);
   if (refus) return refus;
   const { request, env, params } = contexte;
-  const familleId = session.role === "administrateur" ? Number(new URL(request.url).searchParams.get("famille")) : session.famille_id;
+  // L'administrateur ouvre la famille de son choix (?famille=ID), sinon la sienne s'il en a une.
+  const choisie = Number(new URL(request.url).searchParams.get("famille"));
+  const familleId = session.role === "administrateur" ? (choisie || session.famille_id) : session.famille_id;
   if (!familleId) return erreur(400, session.role === "administrateur" ? "Quelle famille ?" : "Votre compte n'est rattaché à aucune famille. Demandez à l'administrateur.");
   const famille = await env.DB.prepare("SELECT id, nom, cree_le FROM familles WHERE id = ?").bind(familleId).first();
   if (!famille) return erreur(404, "Famille introuvable.");
@@ -39,7 +41,7 @@ export async function onRequest(contexte) {
       const { results: invitations } = await env.DB.prepare(
         "SELECT code, cree_par, cree_le, expire_le FROM invitations WHERE famille_id = ? AND utilisee_le IS NULL AND expire_le > datetime('now') ORDER BY cree_le DESC"
       ).bind(familleId).all();
-      return json({ famille, parents: comptes.filter((c) => c.role === "parent"), enfants: comptes.filter((c) => c.role === "enfant"), invitations });
+      return json({ famille, parents: comptes.filter((c) => c.role !== "enfant"), enfants: comptes.filter((c) => c.role === "enfant"), invitations });
     }
 
     case "PATCH ": {
