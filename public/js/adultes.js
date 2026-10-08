@@ -159,7 +159,7 @@ export function espaceAdulte(app, moi) {
 
   // --- Les comptes (administrateur).
   async function vueComptes() {
-    const comptes = await api("comptes");
+    const [comptes, familles] = await Promise.all([api("comptes"), api("familles")]);
     const enfants = comptes.filter((c) => c.role === "enfant"), parents = comptes.filter((c) => c.role === "parent");
     const nomDe = (id) => comptes.find((c) => c.id === id)?.prenom || "?";
     const casesRubriques = (choisies = []) => `<div class="cases">${rubriquesASeances().map((r) => `<label><input type="checkbox" name="rub" value="${r}"${choisies.includes(r) ? " checked" : ""}> ${esc(nomRubrique(r))}</label>`).join("")}
@@ -185,8 +185,16 @@ export function espaceAdulte(app, moi) {
         <label class="titre">Identifiant (facultatif, sinon tiré du prénom)</label><input type="text" class="champ" name="identifiant" autocapitalize="off" spellcheck="false" placeholder="ex. claire.pichot">
         <label class="titre">Enfants qu'il ou elle suit</label>${cases(enfants, "enf")}
         <button class="cta" type="submit">Créer le parent</button></form></details>
-      <h2>Tous les comptes</h2>
-      ${comptes.map((c) => `<details class="bloc carte"${c.actif ? "" : ' style="opacity:.6"'}><summary>${avatar(c.prenom, c.couleur)} ${esc(c.prenom)} ${esc(c.nom)}
+      <h2>Les comptes, famille par famille</h2>
+      ${[...familles.map((fa) => ({ titre: `🏠 ${esc(fa.nom)} <span class="muet petit">n° ${fa.id}</span>`, liste: comptes.filter((c) => c.famille_id === fa.id) })),
+        { titre: "Sans famille", liste: comptes.filter((c) => !c.famille_id) }]
+        .filter((g) => g.liste.length)
+        .map((g) => `<h3 style="margin-top:22px">${g.titre}</h3>` + ["administrateur", "parent", "enfant"].flatMap((role) => g.liste.filter((c) => c.role === role)).map(carte).join("")).join("")}
+    </div>`;
+
+    // Une carte de compte, dépliable : ses détails, sa fiche à modifier, ses boutons.
+    function carte(c) {
+      return `<details class="bloc carte"${c.actif ? "" : ' style="opacity:.6"'}><summary>${avatar(c.prenom, c.couleur)} ${esc(c.prenom)} ${esc(c.nom)}
           <span class="muet petit">— ${c.role}${c.classe ? " · " + esc(classe(c.classe)?.nom || c.classe) : ""} · identifiant <b>${esc(c.identifiant)}</b>${c.actif ? "" : " · désactivé"}</span></summary>
         <p class="muet petit">Créé le ${dateFr(c.cree_le)}${c.derniere_connexion ? " · dernière connexion le " + dateFr(c.derniere_connexion) : " · jamais connecté"}
           ${c.role === "enfant" ? ` · rubriques : ${c.rubriques.map(nomRubrique).join(", ") || "aucune"} · parents : ${c.parents.map(nomDe).join(", ") || "aucun"}` : ""}
@@ -196,13 +204,15 @@ export function espaceAdulte(app, moi) {
           <label class="titre">Nom</label><input type="text" class="champ" name="nom" value="${esc(c.nom)}" maxlength="60">
           ${c.role === "enfant" ? `<label class="titre">Année de naissance</label><input type="number" name="annee" value="${c.annee_naissance || ""}" min="2005" max="2030">
             <label class="titre">Classe</label>${choixClasse(c.classe)}<label class="titre">Rubriques</label>${casesRubriques(c.rubriques)}
-            <label class="titre">Parents</label>${cases(parents, "par", c.parents)}`
-          : `<label class="titre">Enfants suivis</label>${cases(enfants, "enf", c.enfants)}`}
+            <label class="titre">Parents (en plus de ceux de sa famille)</label>${cases(parents, "par", c.parents)}`
+          : `<label class="titre">Enfants suivis (en plus de ceux de sa famille)</label>${cases(enfants, "enf", c.enfants)}`}
+          <label class="titre">Famille</label><select class="mini" name="famille"><option value="">Aucune</option>${familles.map((fa) => `<option value="${fa.id}"${fa.id === c.famille_id ? " selected" : ""}>${esc(fa.nom)} (n° ${fa.id})</option>`).join("")}</select>
           <button class="cta petit" type="submit">Enregistrer</button></form>
           <div class="ligne"><button class="cta sec petit" data-secret="${c.id}">${c.role === "enfant" ? "Nouveau code" : "Nouveau mot de passe"}</button>
-          <button class="cta sec petit" data-actif="${c.id}" data-val="${c.actif ? 0 : 1}">${c.actif ? "Désactiver" : "Réactiver"}</button></div>`}
-      </details>`).join("")}
-    </div>`;
+          <button class="cta sec petit" data-actif="${c.id}" data-val="${c.actif ? 0 : 1}">${c.actif ? "Désactiver" : "Réactiver"}</button>
+          <button class="cta sec petit" data-sup="${c.id}" style="color:var(--marge);border-color:var(--marge)">Supprimer</button></div>`}
+      </details>`;
+    }
 
     const montrerSecret = (prenom, identifiant, r) => {
       $("#secret").innerHTML = `<div class="secret">${r.code
@@ -233,8 +243,8 @@ export function espaceAdulte(app, moi) {
       e.preventDefault();
       const c = comptes.find((x) => x.id === Number(f.dataset.modif)), v = lire(f);
       const corps = c.role === "enfant"
-        ? { prenom: v.prenom, nom: v.nom, annee_naissance: v.annee || null, classe: v.classe, rubriques: coches(f, "rub"), parents: coches(f, "par") }
-        : { prenom: v.prenom, nom: v.nom, enfants: coches(f, "enf") };
+        ? { prenom: v.prenom, nom: v.nom, annee_naissance: v.annee || null, classe: v.classe, rubriques: coches(f, "rub"), parents: coches(f, "par"), famille_id: v.famille ? Number(v.famille) : null }
+        : { prenom: v.prenom, nom: v.nom, enfants: coches(f, "enf"), famille_id: v.famille ? Number(v.famille) : null };
       try { await api(`comptes/${c.id}`, { methode: "PATCH", corps }); await vueComptes(); } catch (x) { alert(x.message); }
     }));
     app.querySelectorAll("[data-secret]").forEach((b) => (b.onclick = async () => {
@@ -244,6 +254,15 @@ export function espaceAdulte(app, moi) {
     }));
     app.querySelectorAll("[data-actif]").forEach((b) => (b.onclick = async () => {
       try { await api(`comptes/${b.dataset.actif}`, { methode: "PATCH", corps: { actif: b.dataset.val === "1" } }); await vueComptes(); } catch (x) { alert(x.message); }
+    }));
+    app.querySelectorAll("[data-sup]").forEach((b) => (b.onclick = async () => {
+      const c = comptes.find((x) => x.id === Number(b.dataset.sup));
+      const quoi = c.role === "enfant"
+        ? `Supprimer ${c.prenom} ? Toutes ses séances, ses étoiles et son carnet de pêche seront effacés, sans retour possible.`
+        : `Supprimer le compte parent de ${c.prenom} (${c.identifiant}) ? Il ne pourra plus se connecter. Les enfants de la famille ne sont pas touchés.`;
+      if (!confirm(quoi)) return;
+      if (prompt(`Pour confirmer, tapez l'identifiant : ${c.identifiant}`)?.trim().toLowerCase() !== c.identifiant) return alert("Suppression annulée.");
+      try { await api(`comptes/${c.id}`, { methode: "DELETE", corps: {} }); await vueComptes(); } catch (x) { alert(x.message); }
     }));
   }
 

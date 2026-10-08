@@ -68,15 +68,26 @@ export async function onRequestPatch(contexte) {
   return json({ ok: true, ...rendu });
 }
 
-// DELETE /api/comptes/:id (administrateur) -> efface un enfant et tous ses résultats.
-// (Un adulte ne s'efface pas : on le désactive.)
+// DELETE /api/comptes/:id (administrateur)
+//   enfant : efface l'enfant et tous ses résultats ;
+//   parent : efface le compte (ses enfants restent dans la famille, ses petits mots restent signés).
+// Un administrateur ne s'efface pas.
 export async function onRequestDelete(contexte) {
   const { session, refus } = await exiger(contexte, "administrateur");
   if (refus) return refus;
   const env = contexte.env;
   const e = await env.DB.prepare("SELECT id, identifiant, prenom, role FROM comptes WHERE id = ?").bind(Number(contexte.params.id)).first();
   if (!e) return erreur(404, "Compte introuvable.");
-  if (e.role !== "enfant") return erreur(400, "Seul un compte d'enfant s'efface ; un adulte se désactive.");
+  if (e.role === "administrateur") return erreur(400, "Un compte administrateur ne se supprime pas.");
+  if (e.role === "parent") {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM sessions WHERE compte_id = ?").bind(e.id),
+      env.DB.prepare("DELETE FROM liens_parents WHERE parent_id = ?").bind(e.id),
+      env.DB.prepare("DELETE FROM comptes WHERE id = ? AND role = 'parent'").bind(e.id),
+      journal(env, session.signe, "parent.supprime", e.identifiant, { prenom: e.prenom }),
+    ]);
+    return json({ ok: true });
+  }
   await env.DB.batch([...ordresSuppressionEnfant(env, e.id), journal(env, session.signe, "enfant.supprime", e.identifiant, { prenom: e.prenom })]);
   return json({ ok: true });
 }

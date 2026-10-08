@@ -179,3 +179,12 @@ assert.equal(ok(await theo.appel(`enfants/${th.id}`), "tableau").enfant.theme, "
 assert.equal((await theo.appel(`enfants/${th.id}/theme`, "PUT", { theme: "pirates" })).statut, 400, "univers inconnu refusé");
 assert.equal((await theo.appel(`enfants/${a.id}/theme`, "PUT", { theme: "espace" })).statut, 404, "pas l'univers d'un autre");
 console.log("Univers : tout est bon.");
+
+// --- Suppression d'un parent par l'administrateur (les enfants de la famille restent).
+const pSup = ok(await admin.appel("comptes", "POST", { role: "parent", prenom: `ASupprimer${suffixe}` }), "parent à supprimer");
+const cSup = client(); ok(await cSup.connexion(pSup.identifiant, pSup.mot_de_passe_provisoire), "connexion du parent");
+ok(await admin.appel(`comptes/${pSup.id}`, "DELETE", {}), "suppression du parent");
+assert.equal((await cSup.appel("moi")).statut, 401, "sa session est fermée");
+assert.equal((await client().connexion(pSup.identifiant, pSup.mot_de_passe_provisoire)).statut, 401, "il ne se connecte plus");
+assert.equal((await admin.appel("comptes/1", "DELETE", {})).statut, 400, "l'administrateur ne se supprime pas");
+console.log("Suppression d'un parent : tout est bon.");
