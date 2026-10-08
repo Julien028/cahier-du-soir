@@ -1,6 +1,7 @@
 // Crée le compte administrateur (ou change son mot de passe s'il existe déjà).
 //   npm run compte              -> sur la base locale du poste
 //   npm run compte -- --enligne -> sur la vraie base, chez Cloudflare
+//   npm run compte -- --enligne --preparer -> si wrangler n'est pas connecté dans ce terminal (voir plus bas)
 // Le mot de passe se tape ici, ne s'affiche pas, et n'est garde nulle part en clair :
 // seule son empreinte part en base. Les comptes des parents et des enfants se créent
 // ensuite depuis l'onglet Comptes du site.
@@ -46,13 +47,21 @@ if (!prenom) { console.error("Il faut un prénom."); process.exit(1); }
 if (motDePasse !== encore) { console.error("Les deux mots de passe ne sont pas les mêmes."); process.exit(1); }
 if (motDePasse.length < 10) { console.error("Mot de passe trop court : 10 caractères au moins."); process.exit(1); }
 
-const dossier = mkdtempSync(join(tmpdir(), "cahier-compte-"));
-const fichier = join(dossier, "compte.sql");
+// --preparer : quand wrangler n'est pas connecté dans ce terminal, on écrit seulement le
+// fichier (il ne contient que l'empreinte du mot de passe), à passer ensuite à la base avec
+//   npx wrangler d1 execute cahier-du-soir --remote --file=essais/compte-admin.sql
+const preparer = process.argv.includes("--preparer");
+const dossier = preparer ? join(racine, "essais") : mkdtempSync(join(tmpdir(), "cahier-compte-"));
+const fichier = join(dossier, preparer ? "compte-admin.sql" : "compte.sql");
 writeFileSync(fichier,
   `INSERT INTO comptes (identifiant, prenom, nom, role, mot_de_passe, cree_par) VALUES (${q(identifiant)}, ${q(prenom)}, ${q(nom)}, ${q(role)}, ${q(await hacher(motDePasse))}, 'script')\n` +
   `ON CONFLICT(identifiant) DO UPDATE SET prenom = excluded.prenom, nom = excluded.nom, role = excluded.role, mot_de_passe = excluded.mot_de_passe, actif = 1;\n` +
   `DELETE FROM sessions WHERE compte_id = (SELECT id FROM comptes WHERE identifiant = ${q(identifiant)});\n` +
   `INSERT INTO journal (qui, quoi, cible) VALUES ('script', 'compte.cree', ${q(identifiant)});\n`, "utf8");
+if (preparer) {
+  console.log(`\nC'est prêt (fichier essais/compte-admin.sql). Vous pouvez dire à Claude : « c'est fait ».`);
+  process.exit(0);
+}
 const r = spawnSync(`npx wrangler d1 execute cahier-du-soir ${enLigne ? "--remote" : "--local"} --yes --file="${fichier}"`,
   { cwd: racine, shell: true, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 rmSync(dossier, { recursive: true, force: true });

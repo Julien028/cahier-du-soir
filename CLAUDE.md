@@ -52,6 +52,9 @@ mots simples, et évite le jargon quand un mot courant suffit.
 - Changement de la base : ajouter le changement à `db/schema.sql` (rejouable) et le passer
   avec `npm run db:schema`.
 - Premier administrateur : `npm run compte -- --enligne` (Julien tape lui-même son mot de passe).
+  Dans le terminal de Julien, wrangler n'est pas connecté : ajouter `--preparer`, puis passer
+  `essais/compte-admin.sql` à la base depuis le terminal de Claude, et effacer le fichier.
+  Compte `julien` créé ainsi le 08/10/2026.
 
 ## Où est quoi
 
