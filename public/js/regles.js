@@ -23,7 +23,12 @@ export const RUBRIQUES_EN = [
   { code: "maths-en-c4", nom: "Maths in English · 5e-3e" },
 ];
 // Les cours d'anglais, par niveau (mêmes séances que les classes, plus une leçon par semaine).
-export const RUBRIQUES_ANGLAIS = [];
+export const RUBRIQUES_ANGLAIS = [
+  { code: "anglais-1", nom: "Anglais · niveau 1 (CP-CE2)" },
+  { code: "anglais-2", nom: "Anglais · niveau 2 (CM1-CM2)" },
+  { code: "anglais-3", nom: "Anglais · niveau 3 (6e-5e)" },
+  { code: "anglais-4", nom: "Anglais · niveau 4 (4e-3e)" },
+];
 // Les rubriques qui ne sont pas une classe : lues quand on veut, sans séance du soir.
 export const RUBRIQUES_LIBRES = [{ code: "peche", nom: "La pêche" }];
 // Toutes les rubriques qui ont un programme à séances (public/programmes/<code>.js).

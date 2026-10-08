@@ -53,7 +53,7 @@ export function derouler(zone, questions, { titre = "", accord = true } = {}) {
         <div class="carte">
           <div class="chrono">${esc(titre)}${titre ? " · " : ""}Question ${i + 1} sur ${questions.length}</div>
           <div class="barre">${barre}</div>
-          <p class="enonce">${txt(q.enonce)}</p>
+          <p class="enonce${String(q.enonce).length > 160 ? " long" : ""}">${txt(q.enonce)}</p>
           ${q.audio ? (peutParler ? `<div class="ligne" style="margin-bottom:14px"><button class="cta sec petit" id="ecouter" style="width:auto;margin:0">🔊 Écouter</button>
             <button class="cta sec petit" id="lent" style="width:auto;margin:0">🐢 Plus lentement</button></div>`
             : `<p class="muet petit">Cette tablette ne sait pas lire à voix haute : demande à un adulte de lire « ${esc(q.audio)} ».</p>`) : ""}

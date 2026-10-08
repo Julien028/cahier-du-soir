@@ -106,4 +106,4 @@ choix des rubriques d'un enfant, onglet Rubriques de l'administrateur, tests (`t
    **En ligne depuis le 08/10/2026.** Écrites par des assistants en parallèle, chacune contrôlée par
    `tests/verifier-programme.mjs` (forme, exactitude des réponses, au moins 300 énoncés différents).
 4. Cours d'anglais en 4 niveaux (`anglais-1` à `anglais-4`) : leçon de la semaine (`lecon`) et questions
-   à écouter (`audio`, lues par la voix du navigateur). En cours le 08/10/2026.
+   à écouter (`audio`, lues par la voix du navigateur). **En ligne depuis le 08/10/2026.**
