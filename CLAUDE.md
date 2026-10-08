@@ -41,6 +41,18 @@ mots simples, et évite le jargon quand un mot courant suffit.
   prévoir une reprise des prises. Le carnet devient personnel à chaque enfant.
 - Les anciens sites restent en ligne tant que la reprise n'est pas faite et vérifiée.
 
+## En ligne
+
+- Adresse : https://cahier-du-soir.pages.dev (Cloudflare Pages `cahier-du-soir`, créé par dépôt direct
+  le 08/10/2026 : il ne peut pas être relié à GitHub, comme le site des heures).
+- Base : D1 `cahier-du-soir` (WEUR), id dans `wrangler.toml`.
+- Code : GitHub privé `Julien028/cahier-du-soir`, branche `master`.
+- Après chaque modification : `npm test`, vérifier sur le poste (`npm run dev`), commit, `git push`,
+  puis **`npm run deploy`** (la publication n'est pas automatique).
+- Changement de la base : ajouter le changement à `db/schema.sql` (rejouable) et le passer
+  avec `npm run db:schema`.
+- Premier administrateur : `npm run compte -- --enligne` (Julien tape lui-même son mot de passe).
+
 ## Où est quoi
 
 | Élément | Contenu |
@@ -65,6 +77,6 @@ créée par `npm run db:schema:local`, administrateur local par `npm run compte`
 
 ## Étapes
 
-1. Comptes + CE2 et 6e (avec la motivation) + reprise des progressions d'André et Simon. **Construite et testée sur le poste le 08/10/2026, pas encore en ligne.**
+1. Comptes + CE2 et 6e (avec la motivation) + reprise des progressions d'André et Simon. **En ligne depuis le 08/10/2026.**
 2. Pêche, avec un carnet de prises par enfant.
 3. CM1, puis les autres classes.

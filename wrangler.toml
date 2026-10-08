@@ -6,9 +6,8 @@ pages_build_output_dir = "public"
 compatibility_date = "2026-10-01"
 
 # Base à part : les résultats des enfants ne se mélangent à rien d'autre.
-# L'identifiant ci-dessous est provisoire (base locale du poste) ; il sera remplacé par
-# celui que donne « npx wrangler d1 create cahier-du-soir » à la mise en ligne.
+# Créée le 08/10/2026 (région WEUR) par : npx wrangler d1 create cahier-du-soir --location weur
 [[d1_databases]]
 binding = "DB"
 database_name = "cahier-du-soir"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "c36b59fc-a8b0-467d-90bf-42853e02045c"
