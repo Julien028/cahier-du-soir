@@ -1,0 +1,489 @@
+<title>Carnet de pêche</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: field logbook — season ledger up top, entry form beside a dated list of catches */
+:root {
+  --bg: #ECF0EB;        /* lichen paper */
+  --panel: #F8FAF6;
+  --fg: #16252A;        /* deep water ink */
+  --muted: #5B6B6A;
+  --line: #CBD5CE;
+  --accent: #23695C;    /* river green */
+  --accent-soft: #D3E5DE;
+  --warn: #A4471E;      /* under-size */
+  --warn-soft: #F4DED2;
+  --ok: #2D6A3E;
+  --ok-soft: #DCEBDD;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0F1A1C; --panel: #15242A; --fg: #DDE7E2; --muted: #8FA29E; --line: #2A3D41;
+  --accent: #6CC2AE; --accent-soft: #1C3A36; --warn: #EE9A6E; --warn-soft: #3D2419;
+  --ok: #8BCB97; --ok-soft: #1D3324; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0F1A1C; --panel: #15242A; --fg: #DDE7E2; --muted: #8FA29E; --line: #2A3D41;
+  --accent: #6CC2AE; --accent-soft: #1C3A36; --warn: #EE9A6E; --warn-soft: #3D2419;
+  --ok: #8BCB97; --ok-soft: #1D3324; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); padding: 28px 16px 48px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 24px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+h2 { font-size: 1.15rem; font-weight: 700; }
+.eyebrow { font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; border-bottom: 2px solid var(--fg); padding-bottom: 14px; }
+header .sub { color: var(--muted); margin-top: 8px; }
+.season { display: flex; align-items: center; gap: 8px; }
+select, input, textarea, button { font: inherit; color: inherit; }
+select, input, textarea { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%; min-width: 0; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.season select { width: auto; }
+
+.ledger { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); background: var(--panel); border-radius: 8px; }
+.ledger > div { padding: 14px 16px; display: grid; gap: 4px; }
+.ledger > div + div { border-left: 1px solid var(--line); }
+.ledger .v { font: 500 1.6rem/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+.ledger .d { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+@media (max-width: 720px) { .ledger { grid-template-columns: 1fr 1fr; } .ledger > div:nth-child(3) { border-left: 0; } .ledger > div:nth-child(n+3) { border-top: 1px solid var(--line); } }
+
+.main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 880px) { .main { grid-template-columns: 1fr; } }
+
+form.entry { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 12px; }
+@media (min-width: 881px) { form.entry { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); } }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+label span.hint { font: 11px var(--mono); }
+.check { display: flex; align-items: center; gap: 8px; color: var(--fg); font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+textarea { resize: vertical; min-height: 60px; }
+.maille { font: 12px var(--mono); padding: 6px 8px; border-radius: 6px; background: var(--accent-soft); }
+.maille.under { background: var(--warn-soft); color: var(--warn); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+button { cursor: pointer; border-radius: 6px; padding: 9px 14px; border: 1px solid var(--line); background: transparent; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); font-weight: 600; }
+button.link { border: 0; padding: 4px 6px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+button.danger { color: var(--warn); border-color: var(--warn); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.2em; }
+
+.side { display: grid; gap: 18px; min-width: 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters select, .filters input { width: auto; flex: 1 1 140px; }
+.species { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; }
+.bar { display: grid; grid-template-columns: minmax(90px, 140px) 1fr auto; gap: 10px; align-items: center; font-size: 13px; }
+.bar .track { height: 8px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
+.bar .fill { height: 100%; background: var(--accent); border-radius: 4px; }
+
+.log { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.day { font: 500 12px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 16px 0 6px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.catch { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 4px 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.catch .time { font: 13px var(--mono); color: var(--muted); padding-top: 3px; }
+.catch .what { font-weight: 600; font-size: 16px; }
+.catch .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.catch .notes { font-size: 14px; margin-top: 4px; }
+.catch .size { text-align: right; font: 500 15px var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.catch .size small { display: block; color: var(--muted); font-size: 12px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+.chip { font: 11px/1 var(--mono); padding: 4px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.chip.ex { border-style: dashed; }
+.empty { padding: 32px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; }
+.confirm { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.banner { font-size: 13px; padding: 10px 12px; border-radius: 6px; background: var(--accent-soft); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: center; }
+footer { color: var(--muted); font-size: 12px; max-width: 70ch; }
+@media (prefers-reduced-motion: no-preference) { .catch { transition: background .2s; } .catch.flash { background: var(--accent-soft); } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Journal de bord</div>
+      <h1>Carnet de pêche</h1>
+      <div class="sub">Chaque prise notée : où, quand, quoi, comment.</div>
+    </div>
+    <label class="season">Saison
+      <select id="f-season" aria-label="Saison"></select>
+    </label>
+  </header>
+
+  <section class="ledger" aria-label="Bilan de la saison">
+    <div><span class="eyebrow">Prises</span><span class="v" id="s-count">0</span><span class="d" id="s-sessions">—</span></div>
+    <div><span class="eyebrow">Plus beau poisson</span><span class="v" id="s-best">—</span><span class="d" id="s-best-d">—</span></div>
+    <div><span class="eyebrow">Remis à l'eau</span><span class="v" id="s-release">—</span><span class="d" id="s-release-d">—</span></div>
+    <div><span class="eyebrow">Meilleur coin</span><span class="v" id="s-spot" style="font-size:1.15rem">—</span><span class="d" id="s-spot-d">—</span></div>
+  </section>
+
+  <div class="main">
+    <form class="entry" id="entry" autocomplete="off">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <h2 id="form-title">Nouvelle prise</h2>
+        <button type="button" class="link" id="cancel-edit" hidden>Annuler</button>
+      </div>
+      <div class="row">
+        <label>Date<input type="date" id="i-date" required></label>
+        <label>Heure<input type="time" id="i-time"></label>
+      </div>
+      <label>Lieu<input id="i-spot" list="spots" placeholder="ex. Loire, gravière de Bréhémont" required></label>
+      <datalist id="spots"></datalist>
+      <div class="row">
+        <label>Espèce<input id="i-species" list="species-list" placeholder="Brochet" required></label>
+        <label>Eau<select id="i-cat">
+          <option value="2">2e catégorie</option>
+          <option value="1">1re catégorie</option>
+          <option value="mer">Mer</option>
+        </select></label>
+      </div>
+      <datalist id="species-list"></datalist>
+      <div class="row">
+        <label>Taille <span class="hint">cm</span><input type="number" id="i-len" min="0" step="0.5" inputmode="decimal"></label>
+        <label>Poids <span class="hint">g</span><input type="number" id="i-weight" min="0" step="10" inputmode="numeric"></label>
+      </div>
+      <div class="maille" id="maille" hidden></div>
+      <div class="row">
+        <label>Technique<select id="i-tech">
+          <option>Leurre</option><option>Mouche</option><option>Coup</option><option>Feeder</option>
+          <option>Carpe</option><option>Vif / mort manié</option><option>Toc</option><option>Surfcasting</option><option>Autre</option>
+        </select></label>
+        <label>Appât / leurre<input id="i-bait" placeholder="Shad 10 cm"></label>
+      </div>
+      <div class="row">
+        <label>Météo<input id="i-weather" placeholder="Couvert, vent S"></label>
+        <label>Eau <span class="hint">°C</span><input type="number" id="i-water" step="0.5" inputmode="decimal"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="i-release" checked> Remis à l'eau</label>
+      <label>Notes<textarea id="i-notes" placeholder="Touche franche au bord du bois mort…"></textarea></label>
+      <div class="actions">
+        <button type="submit" class="primary" id="save">Noter la prise</button>
+      </div>
+      <div class="status" id="status" role="status"></div>
+    </form>
+
+    <div class="side">
+      <div class="banner" id="ex-banner" hidden>
+        <span>Les prises marquées « exemple » montrent le fonctionnement du carnet.</span>
+        <span class="confirm" id="ex-actions"><button type="button" class="link" id="ex-clear">Effacer les exemples</button></span>
+      </div>
+      <div class="filters">
+        <input type="search" id="f-q" placeholder="Rechercher (lieu, appât, notes)" aria-label="Rechercher">
+        <select id="f-species" aria-label="Filtrer par espèce"><option value="">Toutes espèces</option></select>
+        <select id="f-spot" aria-label="Filtrer par lieu"><option value="">Tous les lieux</option></select>
+      </div>
+      <section class="species" id="species-box" hidden>
+        <span class="eyebrow">Par espèce</span>
+        <div id="species-bars" style="display:grid;gap:8px"></div>
+      </section>
+      <section class="log" id="log" aria-live="polite">
+        <div class="empty" id="loading">Ouverture du carnet…<br>Vos prises apparaîtront ici. Remplissez le formulaire pour noter la première.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>Mailles indiquées à titre indicatif (minimums nationaux). Les arrêtés préfectoraux et les AAPPMA peuvent fixer des tailles plus grandes : vérifiez la réglementation de votre parcours. Phase lunaire calculée à partir de la date de la prise.</footer>
+</div>
+
+<script>
+(function () {
+  // Mailles nationales indicatives, en cm, par catégorie d'eau
+  const MAILLES = {
+    "Brochet": { "1": 50, "2": 60 },
+    "Sandre": { "1": 40, "2": 50 },
+    "Black-bass": { "1": 30, "2": 30 },
+    "Truite fario": { "1": 23, "2": 23 },
+    "Truite arc-en-ciel": { "1": 23, "2": 23 },
+    "Ombre commun": { "1": 30, "2": 30 },
+    "Saumon atlantique": { "1": 50, "2": 50 },
+    "Bar": { "mer": 42 },
+    "Dorade royale": { "mer": 23 },
+    "Lieu jaune": { "mer": 30 },
+    "Maquereau": { "mer": 20 },
+    "Sole": { "mer": 24 },
+  };
+  const SPECIES = ["Brochet", "Sandre", "Perche", "Black-bass", "Carpe commune", "Carpe miroir", "Silure", "Tanche", "Brème", "Gardon", "Rotengle", "Chevesne", "Barbeau", "Truite fario", "Truite arc-en-ciel", "Ombre commun", "Saumon atlantique", "Bar", "Dorade royale", "Lieu jaune", "Maquereau", "Sole", "Mulet"];
+
+  const $ = (id) => document.getElementById(id);
+  const fmtDate = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  let rows = [];          // [{id, ...data}]
+  let db = null, canWrite = true, editingId = null, confirmId = null;
+
+  // ---------- Lune ----------
+  function moon(dateStr) {
+    const d = new Date(dateStr + "T12:00:00Z");
+    const syn = 29.530588853;
+    let age = ((d - Date.UTC(2000, 0, 6, 18, 14)) / 86400000) % syn;
+    if (age < 0) age += syn;
+    const names = ["Nouvelle lune", "Premier croissant", "Premier quartier", "Gibbeuse croissante", "Pleine lune", "Gibbeuse décroissante", "Dernier quartier", "Dernier croissant"];
+    return names[Math.floor((age / syn) * 8 + 0.5) % 8];
+  }
+
+  function maille(sp, cat) {
+    const m = MAILLES[sp];
+    return m ? m[cat] ?? null : null;
+  }
+  function fmtWeight(g) {
+    if (!g && g !== 0) return "";
+    return g >= 1000 ? (g / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + " kg" : g + " g";
+  }
+  const norm = (s) => (s || "").trim();
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  // ---------- Formulaire ----------
+  function today() { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+  function resetForm() {
+    $("entry").reset();
+    $("i-date").value = today();
+    $("i-release").checked = true;
+    editingId = null;
+    $("form-title").textContent = "Nouvelle prise";
+    $("save").textContent = "Noter la prise";
+    $("cancel-edit").hidden = true;
+    updateMaille();
+  }
+  function updateMaille() {
+    const sp = norm($("i-species").value), cat = $("i-cat").value, len = parseFloat($("i-len").value);
+    const m = maille(sp, cat);
+    const box = $("maille");
+    if (!m) { box.hidden = true; return; }
+    box.hidden = false;
+    const under = !isNaN(len) && len < m;
+    box.className = "maille" + (under ? " under" : "");
+    box.textContent = under ? `Sous la maille : ${m} cm pour le ${sp.toLowerCase()} ici. Remise à l'eau obligatoire.` : `Maille ${sp.toLowerCase()} : ${m} cm`;
+    if (under) $("i-release").checked = true;
+  }
+  ["i-species", "i-cat", "i-len"].forEach((id) => $(id).addEventListener("input", updateMaille));
+  $("cancel-edit").addEventListener("click", resetForm);
+
+  function readForm() {
+    const num = (id) => { const v = parseFloat($(id).value); return isNaN(v) ? null : v; };
+    return {
+      date: $("i-date").value, time: $("i-time").value || "",
+      spot: norm($("i-spot").value), species: norm($("i-species").value), cat: $("i-cat").value,
+      length: num("i-len"), weight: num("i-weight"),
+      technique: $("i-tech").value, bait: norm($("i-bait").value),
+      weather: norm($("i-weather").value), water: num("i-water"),
+      released: $("i-release").checked, notes: norm($("i-notes").value),
+    };
+  }
+  function fillForm(r) {
+    $("i-date").value = r.date || today(); $("i-time").value = r.time || "";
+    $("i-spot").value = r.spot || ""; $("i-species").value = r.species || ""; $("i-cat").value = r.cat || "2";
+    $("i-len").value = r.length ?? ""; $("i-weight").value = r.weight ?? "";
+    $("i-tech").value = r.technique || "Leurre"; $("i-bait").value = r.bait || "";
+    $("i-weather").value = r.weather || ""; $("i-water").value = r.water ?? "";
+    $("i-release").checked = !!r.released; $("i-notes").value = r.notes || "";
+    updateMaille();
+  }
+
+  $("entry").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = readForm();
+    if (!data.date || !data.spot || !data.species) { $("status").textContent = "Indiquez au moins la date, le lieu et l'espèce."; return; }
+    if (!db) { $("status").textContent = "Le carnet n'est pas accessible dans cette vue : connectez-vous à claude.ai pour enregistrer."; return; }
+    $("save").disabled = true;
+    try {
+      if (editingId) {
+        const prev = rows.find((r) => r.id === editingId) || {};
+        await db.collection("prises").doc(editingId).set({ ...data, createdAt: prev.createdAt || Date.now(), example: false });
+        $("status").textContent = "Prise modifiée.";
+      } else {
+        await db.collection("prises").add({ ...data, createdAt: Date.now(), example: false });
+        $("status").textContent = `${data.species} noté au carnet.`;
+      }
+      const keepSpot = data.spot, keepDate = data.date, keepCat = data.cat;
+      resetForm();
+      $("i-spot").value = keepSpot; $("i-date").value = keepDate; $("i-cat").value = keepCat;
+    } catch (err) {
+      $("status").textContent = err && err.code === "quota_exceeded" ? "Le carnet est plein : supprimez d'anciennes prises pour en ajouter." :
+        err && err.code === "invalid_argument" ? "Vous n'avez pas le droit d'écrire dans ce carnet." : "Enregistrement impossible pour le moment. Réessayez dans un instant.";
+    } finally { $("save").disabled = !canWrite; }
+  });
+
+  // ---------- Rendu ----------
+  function seasonOf(r) { return (r.date || "").slice(0, 4); }
+  function filtered() {
+    const season = $("f-season").value, sp = $("f-species").value, spot = $("f-spot").value, q = norm($("f-q").value).toLowerCase();
+    return rows.filter((r) =>
+      (!season || seasonOf(r) === season) && (!sp || r.species === sp) && (!spot || r.spot === spot) &&
+      (!q || [r.spot, r.bait, r.notes, r.species, r.technique, r.weather].join(" ").toLowerCase().includes(q)));
+  }
+  function setOptions(sel, values, allLabel) {
+    const cur = sel.value;
+    sel.replaceChildren(...(allLabel != null ? [new Option(allLabel, "")] : []), ...values.map((v) => new Option(v, v)));
+    if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+  }
+
+  function render() {
+    // Saisons, filtres, listes de saisie
+    const seasons = [...new Set(rows.map(seasonOf).filter(Boolean))].sort().reverse();
+    const curYear = String(new Date().getFullYear());
+    if (!seasons.includes(curYear)) seasons.unshift(curYear);
+    const hadSeason = $("f-season").options.length > 0;
+    setOptions($("f-season"), seasons, "Toutes");
+    if (!hadSeason) $("f-season").value = seasons.includes(curYear) && rows.some((r) => seasonOf(r) === curYear) ? curYear : "";
+    const spots = [...new Set(rows.map((r) => r.spot).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
+    const speciesUsed = [...new Set(rows.map((r) => r.species).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
+    setOptions($("f-species"), speciesUsed, "Toutes espèces");
+    setOptions($("f-spot"), spots, "Tous les lieux");
+    $("spots").replaceChildren(...spots.map((s) => new Option(s)));
+    $("species-list").replaceChildren(...[...new Set([...speciesUsed, ...SPECIES])].map((s) => new Option(s)));
+    $("ex-banner").hidden = !rows.some((r) => r.example);
+
+    const list = filtered().sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time) || (b.createdAt || 0) - (a.createdAt || 0));
+    renderLedger(list);
+    renderSpecies(list);
+    renderLog(list);
+  }
+
+  function renderLedger(list) {
+    $("s-count").textContent = list.length;
+    const days = new Set(list.map((r) => r.date + "|" + r.spot)).size;
+    $("s-sessions").textContent = list.length ? `${days} sortie${days > 1 ? "s" : ""}` : "Aucune prise sur la période";
+    const best = list.filter((r) => r.length).sort((a, b) => b.length - a.length)[0];
+    $("s-best").textContent = best ? best.length + " cm" : "—";
+    $("s-best-d").textContent = best ? `${best.species}, ${best.spot}` : "—";
+    const rel = list.filter((r) => r.released).length;
+    $("s-release").textContent = list.length ? Math.round((rel / list.length) * 100) + " %" : "—";
+    $("s-release-d").textContent = list.length ? `${rel} sur ${list.length}` : "—";
+    const bySpot = {};
+    list.forEach((r) => { bySpot[r.spot] = (bySpot[r.spot] || 0) + 1; });
+    const top = Object.entries(bySpot).sort((a, b) => b[1] - a[1])[0];
+    $("s-spot").textContent = top ? top[0] : "—";
+    $("s-spot-d").textContent = top ? `${top[1]} prise${top[1] > 1 ? "s" : ""}` : "—";
+  }
+
+  function renderSpecies(list) {
+    const by = {};
+    list.forEach((r) => { by[r.species] = (by[r.species] || 0) + 1; });
+    const entries = Object.entries(by).sort((a, b) => b[1] - a[1]);
+    $("species-box").hidden = entries.length < 2;
+    const max = entries.length ? entries[0][1] : 1;
+    $("species-bars").replaceChildren(...entries.map(([sp, n]) => {
+      const b = el("div", "bar");
+      b.append(el("span", null, sp));
+      const t = el("div", "track"), f = el("div", "fill");
+      f.style.width = (n / max) * 100 + "%";
+      t.append(f); b.append(t, el("span", "num", n));
+      return b;
+    }));
+  }
+
+  function renderLog(list) {
+    const log = $("log");
+    if (!list.length) {
+      log.replaceChildren(el("div", "empty", rows.length ? "Aucune prise ne correspond à ces filtres." : "Le carnet est vide. Remplissez le formulaire pour noter votre première prise."));
+      return;
+    }
+    const frag = [];
+    let lastDay = null;
+    list.forEach((r) => {
+      if (r.date !== lastDay) {
+        lastDay = r.date;
+        const d = el("div", "day");
+        d.append(el("span", null, fmtDate.format(new Date(r.date + "T12:00:00"))), el("span", null, moon(r.date)));
+        frag.push(d);
+      }
+      frag.push(renderCatch(r));
+    });
+    log.replaceChildren(...frag);
+  }
+
+  function renderCatch(r) {
+    const c = el("article", "catch");
+    c.append(el("div", "time", r.time || "—"));
+    const mid = el("div");
+    mid.style.minWidth = "0";
+    mid.append(el("div", "what", r.species));
+    const meta = [r.spot, r.technique + (r.bait ? " · " + r.bait : ""), r.weather, r.water != null ? `eau ${String(r.water).replace(".", ",")} °C` : ""].filter(Boolean).join(" — ");
+    mid.append(el("div", "meta", meta));
+    if (r.notes) mid.append(el("div", "notes", r.notes));
+    const chips = el("div", "chips");
+    const m = maille(r.species, r.cat);
+    if (m && r.length && r.length < m) chips.append(el("span", "chip warn", `sous maille (${m} cm)`));
+    chips.append(el("span", "chip" + (r.released ? " ok" : ""), r.released ? "remis à l'eau" : "gardé"));
+    chips.append(el("span", "chip", r.cat === "mer" ? "mer" : r.cat === "1" ? "1re cat." : "2e cat."));
+    if (r.example) chips.append(el("span", "chip ex", "exemple"));
+    if (canWrite && db) {
+      const ed = el("button", "link", "Modifier"); ed.type = "button";
+      ed.addEventListener("click", () => {
+        editingId = r.id; fillForm(r);
+        $("form-title").textContent = "Modifier la prise"; $("save").textContent = "Enregistrer";
+        $("cancel-edit").hidden = false; $("status").textContent = "";
+        $("i-species").focus();
+      });
+      chips.append(ed);
+      if (confirmId === r.id) {
+        const box = el("span", "confirm");
+        const yes = el("button", "danger", "Supprimer"); yes.type = "button";
+        const no = el("button", "link", "Garder"); no.type = "button";
+        yes.addEventListener("click", async () => {
+          yes.disabled = true;
+          try { await db.collection("prises").doc(r.id).delete(); confirmId = null; if (editingId === r.id) resetForm(); }
+          catch { $("status").textContent = "Suppression impossible pour le moment."; yes.disabled = false; }
+        });
+        no.addEventListener("click", () => { confirmId = null; render(); });
+        box.append(el("span", null, "Supprimer cette prise ?"), yes, no);
+        chips.append(box);
+      } else {
+        const del = el("button", "link", "Supprimer"); del.type = "button";
+        del.addEventListener("click", () => { confirmId = r.id; render(); });
+        chips.append(del);
+      }
+    }
+    mid.append(chips);
+    c.append(mid);
+    const size = el("div", "size", r.length ? r.length + " cm" : "—");
+    if (r.weight) size.append(el("small", null, fmtWeight(r.weight)));
+    c.append(size);
+    return c;
+  }
+
+  ["f-season", "f-species", "f-spot"].forEach((id) => $(id).addEventListener("change", render));
+  $("f-q").addEventListener("input", render);
+
+  // Effacer les exemples, avec confirmation dans la page
+  $("ex-clear").addEventListener("click", function showConfirm() {
+    const box = $("ex-actions");
+    const yes = el("button", "danger", "Oui, effacer"); yes.type = "button";
+    const no = el("button", "link", "Annuler"); no.type = "button";
+    yes.addEventListener("click", async () => {
+      yes.disabled = true;
+      for (const r of rows.filter((x) => x.example)) { try { await db.collection("prises").doc(r.id).delete(); } catch {} }
+      restore();
+    });
+    function restore() { const b = el("button", "link", "Effacer les exemples"); b.type = "button"; b.id = "ex-clear"; b.addEventListener("click", showConfirm); box.replaceChildren(b); }
+    no.addEventListener("click", restore);
+    box.replaceChildren(yes, no);
+  });
+
+  // ---------- Démarrage ----------
+  resetForm();
+  render();
+  $("log").replaceChildren(el("div", "empty", "Ouverture du carnet… Vos prises apparaîtront ici. Remplissez le formulaire pour noter la première."));
+
+  (async () => {
+    if (!window.claude || !window.claude.use) { offline(); return; }
+    db = await window.claude.use("db");
+    if (!db) { offline(); return; }
+    try {
+      const user = await window.claude.use("user");
+      const w = user ? await user.can("data.write") : null;
+      if (w === false) { canWrite = false; $("save").disabled = true; $("status").textContent = "Lecture seule : vous pouvez consulter ce carnet sans le modifier."; }
+    } catch {}
+    db.collection("prises").onSnapshot(
+      (snap) => { rows = snap.docs.map((d) => ({ id: d.id, ...d.data() })); render(); },
+      () => { $("log").replaceChildren(el("div", "empty", "Le carnet ne répond plus. Rechargez la page.")); }
+    );
+  })();
+  function offline() {
+    $("log").replaceChildren(el("div", "empty", "Le carnet n'est pas accessible dans cette vue. Ouvrez-le sur claude.ai en étant connecté pour noter et retrouver vos prises."));
+    $("save").disabled = true;
+  }
+})();
+</script>

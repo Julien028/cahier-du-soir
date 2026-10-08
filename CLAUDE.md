@@ -32,11 +32,13 @@ mots simples, et évite le jargon quand un mot courant suffit.
 
 ## Reprise de l'existant
 
-- Cahier d'André (CE2) : `../andre-ce2/public/index.html`, clé `cahierCE2:andre`.
-- Cahier de Simon (6e, version 4) : `../simon-6eme/public/index.html`, clé `cahier6e:simon`.
+- Les anciens sites (dossiers supprimés le 08/10/2026, copies dans `docs/anciens-sites/`, historique
+  sur GitHub) :
+- Cahier d'André (CE2) : `docs/anciens-sites/andre-ce2.html`, clé `cahierCE2:andre`.
+- Cahier de Simon (6e, version 4) : `docs/anciens-sites/simon-6eme.html`, clé `cahier6e:simon`.
   Les deux : `etat={semaine, jour, historique:[{date,semaine,jour,mat,score,total}], modeIA}`,
   bouton « Enregistrer une sauvegarde » (fichier JSON) → à importer dans le nouveau site.
-- Carnet de pêche : `../carnet-de-peche/public/index.html`, clé `peche:carnet`,
+- Carnet de pêche : `docs/anciens-sites/carnet-de-peche.html`, clé `peche:carnet`,
   `etat={quiz:{}, prises:[{espece,taille,date,lieu,remis}], sac:[]}`, sans sauvegarde :
   prévoir une reprise des prises. Le carnet devient personnel à chaque enfant.
 - Les anciens sites restent en ligne tant que la reprise n'est pas faite et vérifiée.
@@ -61,7 +63,9 @@ mots simples, et évite le jargon quand un mot courant suffit.
 | Élément | Contenu |
 |---|---|
 | `public/` | Les pages. `js/app.js` (connexion), `js/enfant.js` (espace enfant), `js/adultes.js` (parents, administrateur), `js/seance.js` (déroulé des questions), `js/regles.js` (étoiles, grades, badges, missions : lu aussi par le serveur). |
-| `public/programmes/` | Un module par classe. `ce2.js` et `6e.js` sont **recopiés** des anciens cahiers par `npm run programmes` : les modifier là-bas, puis relancer. |
+| `public/programmes/` | Un module par rubrique : `ce2.js`, `6e.js` (programme de l'année et banque d'exercices), `peche.js` (chapitres, poissons, quiz, sac). Seule source de ce contenu. |
+| `public/js/peche.js` | L'écran de la pêche. |
+| `docs/anciens-sites/` | Les pages des anciens sites, pour mémoire. |
 | `functions/api/` | Le serveur : `connexion`, `deconnexion`, `moi`, `comptes` (administrateur), `enfants/[[chemin]].js` (tout ce qui concerne un enfant). |
 | `src/` | Outils du serveur : sessions et mots de passe (repris du site des heures), comptes, tableau de bord d'un enfant. |
 | `db/schema.sql` | La base. |
@@ -81,5 +85,5 @@ créée par `npm run db:schema:local`, administrateur local par `npm run compte`
 ## Étapes
 
 1. Comptes + CE2 et 6e (avec la motivation) + reprise des progressions d'André et Simon. **En ligne depuis le 08/10/2026.**
-2. Pêche, avec un carnet de prises par enfant.
+2. Pêche, avec un carnet de prises par enfant. **En ligne depuis le 08/10/2026.**
 3. CM1, puis les autres classes.
