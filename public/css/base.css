@@ -1,0 +1,77 @@
+/* Présentation reprise des anciens cahiers (andre-ce2, simon-6eme). */
+:root{
+  --papier:#F8F7F2;--papier-fonce:#EFEDE4;--seyes:#C3CDE7;--seyes-fort:#9FAFD6;
+  --marge:#C1443A;--encre:#1E3A6E;--encre-clair:#5A6E96;--juste:#2C7A52;--craie:#FFFFFF;--r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--papier);color:var(--encre);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,sans-serif;font-size:17px;line-height:1.55;-webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:"Fraunces",Georgia,serif;font-weight:800;line-height:1.1;margin:0}
+h1{font-size:clamp(28px,7vw,40px);letter-spacing:-.01em}
+h2{font-size:clamp(21px,4.5vw,26px)}
+h3{font-size:18px;font-weight:600}
+button{font:inherit;cursor:pointer}
+.wrap{max-width:720px;margin:0 auto;padding:0 20px 64px}
+.entete{position:relative;padding:26px 20px 22px;margin-bottom:8px;background:linear-gradient(var(--seyes) 1px,transparent 1px) 0 0/100% 26px,var(--craie);border-bottom:2px solid var(--seyes-fort)}
+.entete::before{content:"";position:absolute;top:0;bottom:0;left:34px;width:2px;background:var(--marge);opacity:.75}
+.entete-in{max-width:720px;margin:0 auto;padding-left:30px}
+.entete p{margin:6px 0 0;color:var(--encre-clair);font-size:15px}
+.entete h1{color:#C62828}
+.onglets{display:flex;gap:6px;max-width:720px;margin:14px auto 20px;padding:0 20px;flex-wrap:wrap}
+.onglet{background:transparent;border:1.5px solid var(--seyes-fort);color:var(--encre-clair);border-radius:999px;padding:7px 15px;font-size:14.5px}
+.onglet[aria-selected="true"]{background:var(--encre);border-color:var(--encre);color:var(--craie);font-weight:700}
+.onglet:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--marge);outline-offset:2px}
+.carte{background:var(--craie);border:1.5px solid var(--seyes-fort);border-radius:var(--r);padding:20px;box-shadow:0 2px 0 var(--seyes-fort)}
+.carte.defi{border-color:var(--marge);box-shadow:0 2px 0 var(--marge)}
+.jour-ligne{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;color:var(--encre-clair);font-size:15px}
+.pastille{background:var(--encre);color:var(--craie);border-radius:999px;padding:3px 11px;font-size:14px;font-weight:700}
+.pastille.rouge{background:var(--marge)}
+.notion{margin:14px 0 0;font-size:17.5px}
+.rituel{margin:10px 0 0;font-size:15px;color:var(--encre-clair)}
+.cta{display:block;width:100%;margin-top:18px;background:var(--marge);color:var(--craie);border:0;border-radius:10px;padding:15px;font-size:18px;font-weight:700}
+.cta.sec{background:var(--craie);color:var(--encre);border:1.5px solid var(--encre)}
+.frise{margin-top:26px}
+.frise-grille{display:grid;grid-template-columns:repeat(18,1fr);gap:3px;margin-top:10px}
+.case{aspect-ratio:1;background:var(--papier-fonce);border-radius:2px}
+.case.faite{background:var(--encre)}
+.case.partielle{background:var(--seyes-fort)}
+.case.aujourdhui{outline:2px solid var(--marge);outline-offset:1px}
+.legende{display:flex;gap:16px;margin-top:10px;font-size:13.5px;color:var(--encre-clair);flex-wrap:wrap}
+.puce{width:11px;height:11px;border-radius:2px;display:inline-block}
+.stats{display:flex;gap:22px;margin-top:22px;flex-wrap:wrap}
+.stat b{display:block;font-family:"Fraunces",serif;font-size:30px;font-weight:800;line-height:1}
+.stat span{font-size:14px;color:var(--encre-clair)}
+.barre{display:flex;gap:4px;margin-bottom:18px}
+.barre i{flex:1;height:5px;background:var(--papier-fonce);border-radius:3px}
+.barre i.ok{background:var(--juste)}.barre i.ko{background:var(--marge)}.barre i.en{background:var(--encre)}
+.enonce{font-size:20px;line-height:1.45;margin:0 0 18px}
+.choix{display:flex;flex-direction:column;gap:9px}
+.choix button{text-align:left;background:var(--craie);border:1.5px solid var(--seyes-fort);border-radius:10px;padding:13px 15px;color:var(--encre)}
+.choix button.sel{border-color:var(--encre);border-width:2.5px}
+.choix button.bon{border-color:var(--juste);background:#EEF6F0}
+.choix button.mauvais{border-color:var(--marge);background:#FBEFEE}
+input[type=text]{width:100%;padding:14px;font-size:19px;border:1.5px solid var(--seyes-fort);border-radius:10px;background:var(--craie);color:var(--encre)}
+.verdict{margin-top:16px;padding:14px 16px;border-radius:10px;border-left:5px solid}
+.verdict.ok{background:#EEF6F0;border-color:var(--juste)}
+.verdict.ko{background:#FBEFEE;border-color:var(--marge)}
+.verdict b{display:block;margin-bottom:4px}
+.chrono{font-size:14px;color:var(--encre-clair);text-align:right;margin-bottom:6px}
+.periode{margin-top:22px}
+.sem{border-top:1px solid var(--seyes);padding:12px 0}
+.sem-num{font-family:"Fraunces",serif;color:var(--marge);font-size:15px;font-weight:700}
+.sem ul{margin:8px 0 0;padding-left:18px;font-size:15px;color:var(--encre-clair)}
+.sem li{margin:3px 0}
+.sem li b{color:var(--encre);font-weight:700}
+.reglage{border-top:1px solid var(--seyes);padding:16px 0}
+.reglage label{display:block;font-size:14px;color:var(--encre-clair);margin-bottom:6px}
+select,.mini{padding:9px 12px;font-size:16px;border:1.5px solid var(--seyes-fort);border-radius:8px;background:var(--craie);color:var(--encre)}
+.tableau{width:100%;border-collapse:collapse;margin-top:10px;font-size:15px}
+.tableau th,.tableau td{text-align:left;padding:8px 4px;border-bottom:1px solid var(--seyes)}
+.tableau th{color:var(--encre-clair);font-weight:400;font-size:13.5px}
+.note{font-size:14px;color:var(--encre-clair);margin-top:14px}
+.chargement{text-align:center;padding:40px 0;color:var(--encre-clair)}
+.point{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--encre);margin:0 3px;animation:respire 1.1s infinite}
+.point:nth-child(2){animation-delay:.18s}.point:nth-child(3){animation-delay:.36s}
+@keyframes respire{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.point{animation:none;opacity:.6}}
+.cache{display:none}

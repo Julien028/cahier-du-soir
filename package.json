@@ -1,0 +1,24 @@
+{
+  "name": "cahier-du-soir",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Le cahier du soir : devoirs du soir et pêche, un compte par enfant",
+  "scripts": {
+    "dev": "wrangler pages dev --port 8795",
+    "db:schema": "wrangler d1 execute cahier-du-soir --remote --file=db/schema.sql",
+    "db:schema:local": "wrangler d1 execute cahier-du-soir --local --file=db/schema.sql",
+    "db:export": "wrangler d1 export cahier-du-soir --remote --output=sauvegardes/export.sql",
+    "deploy": "wrangler pages deploy public --project-name cahier-du-soir --branch master --commit-dirty=true",
+    "compte": "node scripts/creer-compte.mjs",
+    "programmes": "node scripts/extraire-programmes.mjs",
+    "test": "node --test \"tests/*.test.mjs\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20261006.1": true
+  }
+}

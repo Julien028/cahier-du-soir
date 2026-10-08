@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+sauvegardes/
+.dev.vars
+.DS_Store
+essais/
+.claude/launch.json

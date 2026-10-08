@@ -1,0 +1,72 @@
+/* Ce qui est propre au site commun : connexion, motivation, espaces parents et administrateur. */
+:root{--or:#E0A100;--or-clair:#FFF6DA;--rouge-titre:#C62828}
+.entete h1{color:var(--rouge-titre)}
+.entete .qui{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+.lien{background:none;border:0;color:var(--encre-clair);text-decoration:underline;font-size:15px;padding:4px 0}
+.erreur{color:#B3261E;font-size:15px;margin-top:10px;min-height:1.2em}
+.pile>*+*{margin-top:16px}
+.ligne{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.muet{color:var(--encre-clair);font-size:15px}
+
+/* --- Avatar : l'initiale dans un rond de la couleur de l'enfant. */
+.avatar{width:46px;height:46px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  color:#fff;font-family:"Fraunces",serif;font-weight:800;font-size:22px;flex:none}
+.avatar.grand{width:72px;height:72px;font-size:34px}
+
+/* --- Connexion. */
+.tuiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-top:14px}
+.tuile{background:var(--craie);border:1.5px solid var(--seyes-fort);border-radius:var(--r);padding:16px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--encre);font-size:18px;font-weight:700}
+.tuile:active{transform:scale(.97)}
+.points-code{display:flex;justify-content:center;gap:14px;margin:18px 0}
+.points-code i{width:18px;height:18px;border-radius:50%;border:2px solid var(--encre)}
+.points-code i.plein{background:var(--encre)}
+.pave{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:0 auto}
+.pave button{padding:16px 0;font-size:24px;font-weight:700;border-radius:12px;border:1.5px solid var(--seyes-fort);background:var(--craie);color:var(--encre)}
+.pave button:active{background:var(--papier-fonce)}
+input[type=password],input[type=number],input[type=date],textarea,.champ{width:100%;padding:12px;font-size:18px;
+  border:1.5px solid var(--seyes-fort);border-radius:10px;background:var(--craie);color:var(--encre);font-family:inherit}
+label.titre{display:block;font-size:14px;color:var(--encre-clair);margin:12px 0 4px}
+
+/* --- Bandeau de l'enfant : grade et étoiles. */
+.bandeau{display:flex;gap:14px;align-items:center}
+.bandeau .grade{font-family:"Fraunces",serif;font-weight:800;font-size:21px;line-height:1.1}
+.jauge{height:12px;background:var(--papier-fonce);border-radius:6px;overflow:hidden;margin-top:6px}
+.jauge i{display:block;height:100%;background:linear-gradient(90deg,var(--or),#F5C542);border-radius:6px;transition:width .8s}
+.jauge.verte i{background:linear-gradient(90deg,var(--juste),#53A57A)}
+.etoiles{font-weight:700;color:#8A6400}
+.carte.or{border-color:var(--or);box-shadow:0 2px 0 var(--or);background:var(--or-clair)}
+.carte.vert{border-color:var(--juste);box-shadow:0 2px 0 var(--juste);background:#EEF6F0}
+.carte.mot{border-color:#8E3B8E;box-shadow:0 2px 0 #8E3B8E}
+.fait{color:var(--juste);font-weight:700}
+
+/* --- Badges. */
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.badge{background:var(--craie);border:1.5px solid var(--seyes-fort);border-radius:var(--r);padding:14px 10px;text-align:center}
+.badge .ico{font-size:34px;line-height:1.2}
+.badge b{display:block;margin-top:4px;font-size:15.5px}
+.badge span{display:block;font-size:13px;color:var(--encre-clair);margin-top:2px}
+.badge.non{opacity:.45;filter:grayscale(1)}
+
+/* --- Annonces (nouveau badge, nouveau grade) et confettis. */
+.annonce{position:fixed;inset:0;background:rgba(20,30,60,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+.annonce .carte{max-width:380px;width:100%;text-align:center;animation:surgit .35s ease-out}
+.annonce .ico{font-size:60px}
+@keyframes surgit{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.confetti{position:fixed;top:-12px;width:10px;height:14px;z-index:30;pointer-events:none;animation:tombe linear forwards}
+@keyframes tombe{to{transform:translateY(105vh) rotate(720deg)}}
+@media (prefers-reduced-motion:reduce){.confetti{display:none}.annonce .carte{animation:none}.jauge i{transition:none}}
+
+/* --- Espaces parents et administrateur. */
+.liste-enfants{display:grid;gap:12px}
+.enfant-ligne{display:flex;gap:12px;align-items:center;text-align:left;width:100%;background:var(--craie);
+  border:1.5px solid var(--seyes-fort);border-radius:var(--r);padding:14px;color:var(--encre)}
+.enfant-ligne .grow{flex:1}
+.petit{font-size:14px}
+.code-montre{font-family:"Fraunces",serif;font-size:34px;letter-spacing:6px;font-weight:800;color:var(--marge)}
+.secret{background:var(--or-clair);border:1.5px dashed var(--or);border-radius:10px;padding:12px;margin-top:10px}
+.cases{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:6px}
+.cases label{display:flex;gap:6px;align-items:center;font-size:16px}
+details.bloc{border-top:1px solid var(--seyes);padding:12px 0}
+details.bloc summary{cursor:pointer;font-weight:700}
+.cta.petit{padding:10px;font-size:16px;margin-top:10px}
