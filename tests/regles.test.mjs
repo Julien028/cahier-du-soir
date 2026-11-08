@@ -49,3 +49,14 @@ test("univers : grades selon le thème choisi, et par défaut selon le cycle", a
   assert.equal(grade(0, "college", "inconnu").theme, "mythologie");
   for (const t of Object.values(THEMES)) assert.equal(t.grades.length, PALIERS.length);
 });
+
+test("règles des parents et classe au-dessus", async () => {
+  const { lireRegles, classeSuivante, jourDeLaSemaine } = await import("../public/js/regles.js");
+  assert.deepEqual(lireRegles("{}"), { defi: true, mission: true, repos: [] });
+  assert.deepEqual(lireRegles({ defi: false, repos: [3, "0", 9, 3] }), { defi: false, mission: true, repos: [0, 3] });
+  assert.deepEqual(lireRegles("pas du json"), { defi: true, mission: true, repos: [] });
+  assert.equal(classeSuivante("ce2"), "cm1");
+  assert.equal(classeSuivante("6e"), "5e");
+  assert.equal(classeSuivante("3e"), null);
+  assert.equal(jourDeLaSemaine("2026-10-08"), 4); // un jeudi
+});

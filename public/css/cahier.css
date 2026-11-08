@@ -105,3 +105,9 @@ figcaption{font-size:14px;color:var(--encre-clair);margin-top:8px;text-align:cen
 /* --- Mon univers : la tuile choisie. */
 .tuile.choisi{border-color:var(--or);border-width:2.5px;background:var(--or-clair)}
 .tuile small{font-size:13px;color:#8A6400;font-weight:700}
+
+/* --- Comptes : une famille repliée, dépliée d'un clic. */
+.famille-groupe{margin-top:12px;border:1.5px solid var(--seyes-fort);border-radius:var(--r);background:var(--papier-fonce);padding:0 12px}
+.famille-groupe>summary{cursor:pointer;padding:14px 4px;font-family:"Fraunces",serif;font-weight:800;font-size:19px}
+.famille-groupe[open]>summary{border-bottom:1px solid var(--seyes-fort);margin-bottom:10px}
+.famille-groupe>details.carte{margin-bottom:10px}

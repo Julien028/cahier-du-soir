@@ -1,13 +1,14 @@
 // Ce qu'on sait d'un enfant : qui peut le voir, et son tableau de bord.
 import {
   grade, serie, meilleureSerie, BADGES, badgesGagnes, missionDuJour, cycleDe, PALIERS, themeDe,
+  lireRegles, jourDeLaSemaine, classeSuivante, CLASSES,
 } from "../public/js/regles.js";
 
 // Qui peut voir un enfant : l'administrateur, ses parents, et lui-même.
 export async function peutVoir(env, session, enfantId) {
   if (!Number.isInteger(enfantId)) return null;
   const enfant = await env.DB.prepare(
-    "SELECT id, identifiant, prenom, nom, annee_naissance, classe, rubriques, couleur, actif, famille_id, theme FROM comptes WHERE id = ? AND role = 'enfant'"
+    "SELECT id, identifiant, prenom, nom, annee_naissance, classe, rubriques, couleur, actif, famille_id, theme, regles FROM comptes WHERE id = ? AND role = 'enfant'"
   ).bind(enfantId).first();
   if (!enfant) return null;
   if (session.role === "administrateur") return enfant;
@@ -56,6 +57,7 @@ export async function bilanBadges(env, enfantId) {
 export async function tableau(env, enfant, aujourdhui) {
   const id = enfant.id;
   const rubriques = JSON.parse(enfant.rubriques || "[]");
+  const regles = lireRegles(enfant.regles);
   const cycle = cycleDe(enfant.classe);
   const [prog, faitesAujourdhui, bilan, dues, attente, mission, recompense, mots, dernieres, parMatiere] = await Promise.all([
     env.DB.prepare("SELECT rubrique, semaine, jour FROM progression WHERE enfant_id = ?").bind(id).all(),
@@ -92,7 +94,10 @@ export async function tableau(env, enfant, aujourdhui) {
     sansFautes: bilan.sansFautes,
     badges: BADGES.map((b) => ({ code: b.code, nom: b.nom, texte: b.texte, icone: b.icone, gagne: gagnes.includes(b.code) })),
     erreurs: { aRevoir: dues.n, enAttente: attente.n, corrigees: bilan.erreursCorrigees },
-    mission: { texte: missionDuJour(aujourdhui, cycle, id), faite: !!mission },
+    mission: { texte: missionDuJour(aujourdhui, cycle, id), faite: !!mission, proposee: regles.mission },
+    regles,
+    repos: regles.repos.includes(jourDeLaSemaine(aujourdhui)),
+    defi: await etatDefi(env, enfant, rubriques, regles, prog.results, faitesAujourdhui.results, aujourdhui),
     missions: bilan.missions,
     peche: rubriques.includes("peche") ? { chapitres: bilan.chapitresPeche, prises: bilan.prises } : null,
     recompense: recompense ? { ...recompense, gagnees: Math.max(0, etoiles - recompense.depart) } : null,
@@ -100,4 +105,20 @@ export async function tableau(env, enfant, aujourdhui) {
     dernieres: dernieres.results,
     parMatiere: parMatiere.results.map((x) => ({ ...x, reussite: Math.round(x.reussite * 100) })),
   };
+}
+
+// Le défi du niveau au-dessus : la classe suivante, à la même semaine et à la même séance
+// que la classe de l'enfant. Possible une fois par soir, quand toutes ses séances du soir sont faites.
+export async function etatDefi(env, enfant, rubriques, regles, progression, faitesAujourdhui, aujourdhui) {
+  const classeDeBase = rubriques.includes(enfant.classe) ? enfant.classe : rubriques.find((r) => CLASSES.some((c) => c.code === r));
+  const code = classeDeBase ? classeSuivante(classeDeBase) : null;
+  if (!code || !regles.defi) return { code, permis: false, possible: false, fait: false };
+  const p = progression.find((x) => x.rubrique === classeDeBase) || { semaine: 1, jour: 0 };
+  const fait = !!(await env.DB.prepare("SELECT 1 FROM etoiles WHERE enfant_id = ? AND date = ? AND raison = 'defi'").bind(enfant.id, aujourdhui).first());
+  const aFaire = rubriques.filter((r) => r !== "peche");
+  const toutFait = aFaire.length > 0 && aFaire.every((r) => faitesAujourdhui.some((x) => x.rubrique === r));
+  const repos = regles.repos.includes(jourDeLaSemaine(aujourdhui));
+  // La séance du jour est déjà passée dans la classe de base : on prend celle qui vient d'être faite.
+  const jour = p.jour === 0 ? 5 : p.jour - 1, semaine = p.jour === 0 ? Math.max(1, p.semaine - 1) : p.semaine;
+  return { code, permis: true, possible: toutFait && !fait && !repos, fait, semaine, jour };
 }

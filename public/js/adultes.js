@@ -2,7 +2,7 @@
 // et gère les comptes (création, codes, liens parents-enfants, reprise des anciens cahiers).
 import { api } from "./api.js";
 import { $, esc, avatar, dateFr, pluriel } from "./outils.js";
-import { CLASSES, RUBRIQUES_PRETES, rubriquesASeances, classe } from "./regles.js";
+import { CLASSES, RUBRIQUES_PRETES, rubriquesASeances, classe, JOURS_SEMAINE } from "./regles.js";
 import { onglets, qui, deconnecter } from "./app.js";
 import { nomRubrique } from "./enfant.js";
 import { vueRubriques } from "./rubriques.js";
@@ -17,6 +17,7 @@ async function programme(code) {
 export function espaceAdulte(app, moi) {
   const admin = moi.role === "administrateur";
   let famOuverte = null; // la famille ouverte par l'administrateur depuis l'onglet Familles
+  const groupesOuverts = new Set(); // dans Comptes, les familles dépliées (gardées après chaque modification)
   let vue = "enfants";
 
   const entete = () => {
@@ -106,6 +107,16 @@ export function espaceAdulte(app, moi) {
         <p class="${T.mission.faite ? "fait" : "muet"}">🌳 Mission : ${esc(T.mission.texte)} ${T.mission.faite ? "— ✅ faite" : ""}</p>
         <p class="muet">🔍 Carnet des erreurs : ${pluriel(T.erreurs.aRevoir, "à revoir aujourd'hui", "à revoir aujourd'hui")}, ${T.erreurs.enAttente} en attente, ${T.erreurs.corrigees} corrigées.</p></div>
 
+      <div class="carte"><h3>📏 Les règles de ${esc(T.enfant.prenom)}</h3>
+        <form id="regles">
+          <label class="titre" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="defi"${T.regles.defi ? " checked" : ""}${T.defi.code ? "" : " disabled"}>
+            Défi du niveau au-dessus${T.defi.code ? ` (${esc(classe(T.defi.code)?.nom || T.defi.code)}), une fois la séance du soir finie` : " (pas de classe au-dessus prête)"}</label>
+          <label class="titre" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="mission"${T.regles.mission ? " checked" : ""}> Mission sans écran en fin de soirée</label>
+          <label class="titre">Jours de repos (pas de cahier ces jours-là)</label>
+          <div class="cases">${[1, 2, 3, 4, 5, 6, 0].map((j) => `<label><input type="checkbox" name="repos" value="${j}"${T.regles.repos.includes(j) ? " checked" : ""}> ${JOURS_SEMAINE[j]}</label>`).join("")}</div>
+          <button class="cta petit" type="submit">Enregistrer les règles</button>
+        </form>${T.repos ? `<p class="muet petit">Aujourd'hui est un jour de repos pour ${esc(T.enfant.prenom)}.</p>` : ""}</div>
+
       <div class="carte"><h3>🎁 Récompense</h3>
         ${r ? `<p class="notion">${esc(r.libelle)}</p><div class="jauge"><i style="width:${Math.min(100, Math.round(r.gagnees / r.objectif * 100))}%"></i></div>
           <p class="muet">${Math.min(r.gagnees, r.objectif)} ⭐ sur ${r.objectif}${r.gagnees >= r.objectif ? " — 🎉 objectif atteint !" : ""} · fixée par ${esc(r.fixee_par)}</p>
@@ -155,6 +166,11 @@ export function espaceAdulte(app, moi) {
     if ($("#donnee")) $("#donnee").onclick = () => confirm("Marquer la récompense comme donnée ? La jauge repartira à zéro quand vous en fixerez une nouvelle.") && agir("recompense/donnee", {});
     $("#fixer").onclick = () => agir("recompense", { libelle: $("#rl").value, objectif: Number($("#ro").value) });
     $("#envoyer").onclick = () => agir("mots", { texte: $("#mot").value });
+    $("#regles").onsubmit = (e) => {
+      e.preventDefault();
+      const f = e.target;
+      agir("regles", { defi: f.defi.checked, mission: f.mission.checked, repos: [...f.querySelectorAll('input[name="repos"]:checked')].map((x) => Number(x.value)) }, "PUT");
+    };
     app.querySelectorAll("[data-pos]").forEach((b) => (b.onclick = () => {
       const c = b.dataset.pos;
       agir("progression", { rubrique: c, semaine: Number(app.querySelector(`[data-sem="${c}"]`).value), jour: Number(app.querySelector(`[data-jour="${c}"]`).value) }, "PATCH");
@@ -200,10 +216,17 @@ export function espaceAdulte(app, moi) {
         <label class="titre">Enfants qu'il ou elle suit</label>${cases(enfants, "enf")}
         <button class="cta" type="submit">Créer le parent</button></form></details>
       <h2>Les comptes, famille par famille</h2>
-      ${[...familles.map((fa) => ({ titre: `🏠 ${esc(fa.nom)} <span class="muet petit">n° ${fa.id}</span>`, liste: comptes.filter((c) => c.famille_id === fa.id) })),
-        { titre: "Sans famille", liste: comptes.filter((c) => !c.famille_id) }]
+      ${[...familles.map((fa) => ({ cle: String(fa.id), titre: `🏠 ${esc(fa.nom)} <span class="muet petit">n° ${fa.id}</span>`, liste: comptes.filter((c) => c.famille_id === fa.id) })),
+        { cle: "sans", titre: "Sans famille", liste: comptes.filter((c) => !c.famille_id) }]
         .filter((g) => g.liste.length)
-        .map((g) => `<h3 style="margin-top:22px">${g.titre}</h3>` + ["administrateur", "parent", "enfant"].flatMap((role) => g.liste.filter((c) => c.role === role)).map(carte).join("")).join("")}
+        .map((g) => {
+          const nb = (role) => g.liste.filter((c) => c.role === role).length;
+          const adultes = nb("parent") + nb("administrateur"), enfants = nb("enfant");
+          // Repliée par défaut : seulement le nom ; un clic la déplie.
+          return `<details class="famille-groupe" data-groupe="${g.cle}"${groupesOuverts.has(g.cle) ? " open" : ""}><summary>${g.titre}
+            <span class="muet petit">· ${adultes} ${adultes > 1 ? "adultes" : "adulte"}, ${enfants} ${enfants > 1 ? "enfants" : "enfant"}</span></summary>`
+            + ["administrateur", "parent", "enfant"].flatMap((role) => g.liste.filter((c) => c.role === role)).map(carte).join("") + `</details>`;
+        }).join("")}
     </div>`;
 
     // Une carte de compte, dépliable : ses détails, sa fiche à modifier, ses boutons.
@@ -231,6 +254,9 @@ export function espaceAdulte(app, moi) {
       </details>`;
     }
 
+    app.querySelectorAll(".famille-groupe").forEach((d) => d.addEventListener("toggle", () => {
+      if (d.open) groupesOuverts.add(d.dataset.groupe); else groupesOuverts.delete(d.dataset.groupe);
+    }));
     const montrerSecret = (prenom, identifiant, r) => {
       $("#secret").innerHTML = `<div class="secret">${r.code
         ? `<p>Le code de <b>${esc(prenom)}</b> (identifiant <b>${esc(identifiant)}</b>) :</p><div class="code-montre">${esc(r.code)}</div>`

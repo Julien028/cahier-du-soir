@@ -1,7 +1,7 @@
 import { json, erreur, corpsJson, aujourdhui, ajouterJours } from "../../../src/outils.js";
 import { exiger, journal } from "../../../src/session.js";
-import { peutVoir, tableau, bilanBadges, totalEtoiles } from "../../../src/enfants.js";
-import { etoilesSeance, GAINS, badgesGagnes, grade, cycleDe, missionDuJour, DELAI_ERREUR, THEMES } from "../../../public/js/regles.js";
+import { peutVoir, tableau, bilanBadges, totalEtoiles, etatDefi } from "../../../src/enfants.js";
+import { etoilesSeance, GAINS, badgesGagnes, grade, cycleDe, missionDuJour, DELAI_ERREUR, THEMES, lireRegles, jourDeLaSemaine } from "../../../public/js/regles.js";
 
 // Tout ce qui concerne un enfant, sous /api/enfants/:id/…
 //   GET   :id                       tableau de bord (enfant, ses parents, l'administrateur)
@@ -11,6 +11,8 @@ import { etoilesSeance, GAINS, badgesGagnes, grade, cycleDe, missionDuJour, DELA
 //   POST  :id/mission               l'enfant a fait sa mission sans écran
 //   POST  :id/mots/lus              l'enfant a lu ses mots
 //   PUT   :id/theme                 { theme } l'univers de ses grades (l'enfant ou ses parents)
+//   POST  :id/defi                  { score, total } le défi du niveau au-dessus (l'enfant)
+//   PUT   :id/regles                { defi, mission, repos } les règles (parent, administrateur)
 //   PATCH :id/progression           { rubrique, semaine, jour } (parent, administrateur)
 //   POST  :id/recompense            { libelle, objectif }       (parent, administrateur)
 //   POST  :id/recompense/donnee                                  (parent, administrateur)
@@ -29,6 +31,8 @@ export async function onRequest(contexte) {
   const lui = session.role === "enfant";
   const adulte = !lui;
   const rubriques = JSON.parse(enfant.rubriques || "[]");
+  const regles = lireRegles(enfant.regles);
+  const repos = regles.repos.includes(jourDeLaSemaine(jour));
 
   switch (route) {
     case "GET ":
@@ -36,6 +40,7 @@ export async function onRequest(contexte) {
 
     case "POST seances": {
       if (!lui) return erreur(403, "Seul l'enfant fait sa séance.");
+      if (repos) return erreur(409, "Aujourd'hui, c'est jour de repos : pas de cahier !");
       const rubrique = String(corps.rubrique || "");
       if (!rubriques.includes(rubrique) || rubrique === "peche") return erreur(400, "Rubrique inconnue.");
       const score = Number(corps.score), total = Number(corps.total);
@@ -93,6 +98,7 @@ export async function onRequest(contexte) {
 
     case "POST mission": {
       if (!lui) return erreur(403, "Seul l'enfant coche sa mission.");
+      if (!regles.mission) return erreur(400, "La mission sans écran n'est pas proposée.");
       const fait = await env.DB.prepare("SELECT 1 FROM missions WHERE enfant_id = ? AND date = ?").bind(enfant.id, jour).first();
       if (fait) return erreur(409, "Mission déjà cochée aujourd'hui.");
       const avant = badgesGagnes(await bilanBadges(env, enfant.id));
@@ -119,6 +125,38 @@ export async function onRequest(contexte) {
         journal(env, session.signe, "theme", enfant.identifiant, { theme }),
       ]);
       return json({ ok: true, grade: grade(await totalEtoiles(env, enfant.id), cycleDe(enfant.classe), theme) });
+    }
+
+    // Les règles des parents pour cet enfant.
+    case "PUT regles": {
+      if (!adulte) return erreur(403, "Réservé aux parents.");
+      const r = lireRegles(corps);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE comptes SET regles = ? WHERE id = ?").bind(JSON.stringify(r), enfant.id),
+        journal(env, session.signe, "regles", enfant.identifiant, r),
+      ]);
+      return json({ ok: true, regles: r });
+    }
+
+    // Le défi du niveau au-dessus, une fois la séance du soir finie.
+    case "POST defi": {
+      if (!lui) return erreur(403, "Seul l'enfant fait son défi.");
+      const score = Number(corps.score), total = Number(corps.total);
+      if (!Number.isInteger(score) || !Number.isInteger(total) || total < 1 || total > 20 || score < 0 || score > total) return erreur(400, "Résultat illisible.");
+      const prog = (await env.DB.prepare("SELECT rubrique, semaine, jour FROM progression WHERE enfant_id = ?").bind(enfant.id).all()).results;
+      const faites = (await env.DB.prepare("SELECT rubrique FROM seances WHERE enfant_id = ? AND date = ? AND importe = 0").bind(enfant.id, jour).all()).results;
+      const d = await etatDefi(env, enfant, rubriques, regles, prog, faites, jour);
+      if (!d.permis) return erreur(400, "Le défi n'est pas permis.");
+      if (d.fait) return erreur(409, "Le défi de ce soir est déjà fait. À demain !");
+      if (!d.possible) return erreur(409, "Finis d'abord ta séance du soir.");
+      const avant = badgesGagnes(await bilanBadges(env, enfant.id));
+      const totalAvant = await totalEtoiles(env, enfant.id);
+      const gain = etoilesSeance(score, total);
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO etoiles (enfant_id, date, nombre, raison) VALUES (?,?,?,?)").bind(enfant.id, jour, gain, "defi"),
+        journal(env, enfant.prenom, "defi", enfant.identifiant, { niveau: d.code, score, total }),
+      ]);
+      return json(await apresGain(env, enfant, avant, totalAvant, gain));
     }
 
     case "PATCH progression": {

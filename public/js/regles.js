@@ -44,6 +44,7 @@ export const GAINS = {
   sansFaute: 3,        // bonus si tout est juste
   erreurCorrigee: 2,   // une question du carnet des erreurs enfin réussie
   mission: 2,          // la mission sans écran du jour, faite
+  // Le défi du niveau au-dessus rapporte comme une séance : +1 par bonne réponse, +3 si sans faute.
   chapitrePeche: 5,    // un chapitre de pêche validé (quiz réussi), la première fois
 };
 export const etoilesSeance = (score, total) =>
@@ -192,3 +193,28 @@ export function missionDuJour(date, cycle = "primaire", graine = 0) {
 // --- Calendrier du carnet des erreurs : une erreur revient 2 jours plus tard,
 // puis 3 jours plus tard si elle est encore ratée.
 export const DELAI_ERREUR = [2, 3, 4];
+
+// --- Les règles des parents, pour chaque enfant.
+//   defi    : le défi du niveau au-dessus est permis, une fois la séance du soir finie ;
+//   mission : la mission sans écran est proposée ;
+//   repos   : jours sans cahier (0 = dimanche … 6 = samedi).
+export const REGLES_DEFAUT = { defi: true, mission: true, repos: [] };
+export const JOURS_SEMAINE = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+export function lireRegles(brut) {
+  let r = brut;
+  if (typeof r === "string") { try { r = JSON.parse(r); } catch { r = {}; } }
+  r = r && typeof r === "object" ? r : {};
+  return {
+    defi: r.defi !== false,
+    mission: r.mission !== false,
+    repos: [...new Set((Array.isArray(r.repos) ? r.repos : []).map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort(),
+  };
+}
+export const jourDeLaSemaine = (date) => new Date(date + "T12:00:00Z").getUTCDay();
+// La classe au-dessus, si son programme est prêt (sinon null).
+export function classeSuivante(code) {
+  const i = CLASSES.findIndex((c) => c.code === code);
+  const s = i >= 0 ? CLASSES[i + 1] : null;
+  return s && RUBRIQUES_PRETES.includes(s.code) ? s.code : null;
+}
+export const GAIN_DEFI_SANS_FAUTE = 3;

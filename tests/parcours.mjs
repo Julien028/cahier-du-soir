@@ -200,3 +200,26 @@ const enfA = ok(await admin.appel("famille/enfants", "POST", { prenom: `Nina${su
 assert.ok(ok(await admin.appel("moi"), "moi").enfants.some((e) => e.id === enfA.id && e.famille_id === famAdmin.id), "enfant rangé dans la famille");
 ok(await admin.appel(`comptes/${moiAdmin.id}`, "PATCH", { famille_id: null }), "l'administrateur quitte la famille");
 console.log("Administrateur dans sa famille : tout est bon.");
+
+// --- Défi du niveau au-dessus et règles des parents.
+const famR = ok(await admin.appel("familles"), "familles").at(-1);
+const enfR = ok(await admin.appel("famille/enfants?famille=" + famR.id, "POST", { prenom: `Defi${suffixe}`, classe: "ce2", rubriques: ["ce2"], code: "2468" }), "enfant pour le défi");
+const cR = client(); ok(await cR.connexion(enfR.identifiant, "2468"), "connexion");
+let TR = ok(await cR.appel(`enfants/${enfR.id}`), "tableau");
+assert.equal(TR.defi.code, "cm1"); assert.equal(TR.defi.possible, false, "pas de défi avant la séance");
+assert.equal((await cR.appel(`enfants/${enfR.id}/defi`, "POST", { score: 5, total: 5 })).statut, 409, "défi refusé avant la séance");
+ok(await cR.appel(`enfants/${enfR.id}/seances`, "POST", { rubrique: "ce2", matiere: "m", score: 5, total: 5 }), "séance");
+TR = ok(await cR.appel(`enfants/${enfR.id}`), "tableau après séance");
+assert.equal(TR.defi.possible, true); assert.equal(TR.defi.semaine, 1); assert.equal(TR.defi.jour, 0);
+const gd = ok(await cR.appel(`enfants/${enfR.id}/defi`, "POST", { score: 4, total: 5 }), "défi");
+assert.equal(gd.gain, 4);
+assert.equal((await cR.appel(`enfants/${enfR.id}/defi`, "POST", { score: 5, total: 5 })).statut, 409, "un seul défi par soir");
+// Règles : l'administrateur (ou le parent) coupe la mission et met aujourd'hui en jour de repos.
+const jourR = new Date(TR.aujourdhui + "T12:00:00Z").getUTCDay();
+ok(await admin.appel(`enfants/${enfR.id}/regles`, "PUT", { defi: false, mission: false, repos: [jourR] }), "règles");
+TR = ok(await cR.appel(`enfants/${enfR.id}`), "tableau avec règles");
+assert.equal(TR.repos, true); assert.equal(TR.mission.proposee, false); assert.equal(TR.defi.permis, false);
+assert.equal((await cR.appel(`enfants/${enfR.id}/mission`, "POST", {})).statut, 400, "mission coupée");
+assert.equal((await cR.appel(`enfants/${enfR.id}/regles`, "PUT", { defi: true })).statut, 403, "l'enfant ne change pas ses règles");
+assert.equal((await p1.appel(`enfants/${enfR.id}/regles`, "PUT", { defi: true })).statut, 404, "ni un parent d'une autre famille");
+console.log("Défi et règles : tout est bon.");

@@ -22,6 +22,7 @@ export async function espaceEnfant(app, moi) {
   const charger = async () => {
     T = await api(`enfants/${moi.id}`);
     for (const r of T.rubriques) await programme(r.code);
+    if (T.defi?.code) await programme(T.defi.code);
   };
   const entete = () => {
     qui.innerHTML = `${avatar(T.enfant.prenom, T.enfant.couleur)}<span><b>${esc(T.enfant.prenom)}</b>${T.enfant.classe ? " · " + esc(classe(T.enfant.classe)?.nom || "") : ""}</span>
@@ -86,17 +87,25 @@ export async function espaceEnfant(app, moi) {
       ${nonLus.map((m) => `<div class="carte mot"><div class="muet">Un mot de ${esc(m.auteur)}</div>
         <p class="notion">${esc(m.texte)}</p></div>`).join("")}
       ${nonLus.length ? `<button class="cta sec" id="lu" style="margin-top:8px">Merci !</button>` : ""}
-      ${finDuSoir ? `<div class="carte or" style="text-align:center"><div style="font-size:44px">🌙</div>
+      ${T.repos ? `<div class="carte vert" style="text-align:center"><div style="font-size:44px">🌳</div>
+        <h2>Pas de cahier aujourd'hui !</h2>
+        <p class="notion">C'est ton jour de repos. Profite : joue dehors, lis, invente quelque chose.</p></div>` : ""}
+      ${!T.repos && finDuSoir ? `<div class="carte or" style="text-align:center"><div style="font-size:44px">🌙</div>
         <h2>C'est fini pour ce soir, bravo !</h2>
-        <p class="notion">${T.mission.faite ? "Tu as tout fait. Tu peux fermer le cahier." : "Ferme le cahier et va faire ta mission sans écran."}</p></div>` : ""}
-      ${cartes}
+        <p class="notion">${T.mission.faite || !T.mission.proposee ? "Tu as tout fait. Tu peux fermer le cahier." : "Ferme le cahier et va faire ta mission sans écran."}</p></div>` : ""}
+      ${T.repos ? "" : cartes}
+      ${!T.repos && T.defi?.possible && programmes[T.defi.code] ? `<div class="carte defi"><h2>🚀 Défi du niveau au-dessus</h2>
+        <p class="notion">Tu as fini ta séance : relève un défi de <b>${esc(programmes[T.defi.code].nom)}</b> ! Un seul défi par soir.</p>
+        <p class="muet">Chaque bonne réponse : +1 ⭐, sans faute : +3 ⭐ en plus.</p>
+        <button class="cta" id="defi">Relever le défi</button></div>` : ""}
+      ${!T.repos && T.defi?.fait ? `<div class="carte vert"><p class="fait">🚀 Défi du niveau au-dessus relevé ce soir. Bravo !</p></div>` : ""}
       ${T.erreurs.aRevoir ? `<div class="carte"><h2>🔍 Carnet des erreurs</h2>
         <p class="notion">${pluriel(T.erreurs.aRevoir, "question ratée revient", "questions ratées reviennent")} aujourd'hui. Chaque erreur corrigée : +2 ⭐.</p>
         <button class="cta sec" id="erreurs">Revoir mes erreurs</button></div>` : ""}
-      <div class="carte${T.mission.faite ? " vert" : ""}"><h2>🌳 Mission sans écran</h2>
+      ${T.mission.proposee ? `<div class="carte${T.mission.faite ? " vert" : ""}"><h2>🌳 Mission sans écran</h2>
         <p class="notion">${esc(T.mission.texte)}</p>
         ${T.mission.faite ? `<p class="fait">✅ Mission faite. Bravo !</p>`
-        : `<p class="muet">À faire après tes devoirs, loin de l'écran. Quand c'est fait : +2 ⭐.</p><button class="cta sec" id="mission">Je l'ai fait !</button>`}</div>
+        : `<p class="muet">À faire après tes devoirs, loin de l'écran. Quand c'est fait : +2 ⭐.</p><button class="cta sec" id="mission">Je l'ai fait !</button>`}</div>` : ""}
       ${r ? `<div class="carte or"><h2>🎁 ${esc(r.libelle)}</h2>
         <div class="jauge"><i style="width:${Math.min(100, Math.round(r.gagnees / r.objectif * 100))}%"></i></div>
         <p class="muet" style="margin-top:6px">${r.gagnees >= r.objectif ? "🎉 Objectif atteint ! Va le montrer à tes parents." : `${Math.min(r.gagnees, r.objectif)} ⭐ sur ${r.objectif}. Encore ${r.objectif - r.gagnees} ⭐ !`}</p></div>` : ""}
@@ -109,6 +118,7 @@ export async function espaceEnfant(app, moi) {
     app.querySelectorAll("[data-seance]").forEach((b) => (b.onclick = () => seance(b.dataset.seance)));
     if ($("#erreurs")) $("#erreurs").onclick = revoirErreurs;
     if ($("#ouvrir-peche")) $("#ouvrir-peche").onclick = () => { vue = "peche"; afficher(); };
+    if ($("#defi")) $("#defi").onclick = defi;
     if ($("#mission")) $("#mission").onclick = async () => {
       const g = await api(`enfants/${moi.id}/mission`, { methode: "POST", corps: {} }).catch((e) => alert(e.message));
       if (g) await feter(g);
@@ -142,6 +152,25 @@ export async function espaceEnfant(app, moi) {
       ${g && !g.erreur ? `<p class="etoiles" style="font-size:24px;margin-top:10px">+${g.gain} ⭐</p>` : ""}
       <button class="cta" id="fin">Continuer</button></div>`;
     if (g && !g.erreur) await feter(g, true);
+    $("#fin").onclick = () => { vue = "soir"; afficher(); };
+  }
+
+  // --- Le défi du niveau au-dessus : la séance de la classe suivante, même semaine, même jour.
+  async function defi() {
+    const d = T.defi, p = programmes[d.code];
+    const mat = p.matiereDuJour(d.semaine, d.jour);
+    onglets.innerHTML = "";
+    const res = await derouler(app, p.seanceHorsLigne(mat, d.semaine), { titre: `Défi ${p.nom} · ${p.NOM_MAT[mat] || ""}` });
+    const g = await api(`enfants/${moi.id}/defi`, { methode: "POST", corps: { score: res.score, total: res.total } }).catch((e) => (alert(e.message), null));
+    await charger();
+    const sansFaute = res.score === res.total;
+    if (sansFaute) confettis();
+    app.innerHTML = `<div class="carte" style="text-align:center"><div style="font-size:52px">${sansFaute ? "🚀" : res.score >= res.total / 2 ? "💪" : "🧗"}</div>
+      <h2>${res.score} sur ${res.total} en ${esc(p.nom)}</h2>
+      <p class="notion">${sansFaute ? "Sans faute au niveau au-dessus : impressionnant !" : res.score >= res.total / 2 ? "Bravo, tu tiens le niveau au-dessus !" : "C'était le niveau au-dessus : c'est normal que ce soit dur. Tu progresses !"}</p>
+      ${g?.gain ? `<p class="etoiles" style="font-size:24px">+${g.gain} ⭐</p>` : ""}
+      <button class="cta" id="fin">Continuer</button></div>`;
+    if (g) await feter(g);
     $("#fin").onclick = () => { vue = "soir"; afficher(); };
   }
 
