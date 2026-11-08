@@ -1,7 +1,7 @@
 // Ce qu'on sait d'un enfant : qui peut le voir, et son tableau de bord.
 import {
   grade, serie, meilleureSerie, BADGES, badgesGagnes, missionDuJour, cycleDe, PALIERS, themeDe,
-  lireRegles, jourDeLaSemaine, classeSuivante, CLASSES,
+  lireRegles, jourDeLaSemaine, classeSuivante, CLASSES, estLibre,
 } from "../public/js/regles.js";
 
 // Qui peut voir un enfant : l'administrateur, ses parents, et lui-même.
@@ -25,7 +25,7 @@ export const totalEtoiles = async (env, enfantId) =>
 
 // Le bilan qui sert aux badges (voir BADGES dans regles.js).
 export async function bilanBadges(env, enfantId) {
-  const [s, e, m, et, sc, pr, pc, pp] = await Promise.all([
+  const [s, e, m, et, sc, pr, pc, pp, cate] = await Promise.all([
     env.DB.prepare("SELECT date, score, total FROM seances WHERE enfant_id = ?").bind(enfantId).all(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM erreurs WHERE enfant_id = ? AND corrigee = 1").bind(enfantId).first(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM missions WHERE enfant_id = ?").bind(enfantId).first(),
@@ -36,6 +36,8 @@ export async function bilanBadges(env, enfantId) {
     env.DB.prepare("SELECT COALESCE(MAX(semaine),1) AS n FROM progression WHERE enfant_id = ?").bind(enfantId).first(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM peche_chapitres WHERE enfant_id = ? AND reussi = 1").bind(enfantId).first(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM peche_prises WHERE enfant_id = ?").bind(enfantId).first(),
+    env.DB.prepare(`SELECT SUM(cle NOT LIKE 'priere:%') AS chapitres, SUM(cle LIKE 'priere:%') AS prieres
+                      FROM parcours WHERE enfant_id = ? AND rubrique = 'catechisme' AND reussi = 1`).bind(enfantId).first(),
   ]);
   const seances = s.results;
   return {
@@ -48,6 +50,8 @@ export async function bilanBadges(env, enfantId) {
     semainesCompletes: sc.n,
     semaineMax: pr.n,
     chapitresPeche: pc.n,
+    chapitresCate: cate?.chapitres || 0,
+    prieres: cate?.prieres || 0,
     prises: pp.n,
     dates: seances.map((x) => x.date),
   };
@@ -100,6 +104,7 @@ export async function tableau(env, enfant, aujourdhui) {
     defi: await etatDefi(env, enfant, rubriques, regles, prog.results, faitesAujourdhui.results, aujourdhui),
     missions: bilan.missions,
     peche: rubriques.includes("peche") ? { chapitres: bilan.chapitresPeche, prises: bilan.prises } : null,
+    catechisme: rubriques.includes("catechisme") ? { chapitres: bilan.chapitresCate, prieres: bilan.prieres } : null,
     recompense: recompense ? { ...recompense, gagnees: Math.max(0, etoiles - recompense.depart) } : null,
     mots: mots.results,
     dernieres: dernieres.results,
@@ -115,7 +120,7 @@ export async function etatDefi(env, enfant, rubriques, regles, progression, fait
   if (!code || !regles.defi) return { code, permis: false, possible: false, fait: false };
   const p = progression.find((x) => x.rubrique === classeDeBase) || { semaine: 1, jour: 0 };
   const fait = !!(await env.DB.prepare("SELECT 1 FROM etoiles WHERE enfant_id = ? AND date = ? AND raison = 'defi'").bind(enfant.id, aujourdhui).first());
-  const aFaire = rubriques.filter((r) => r !== "peche");
+  const aFaire = rubriques.filter((r) => !estLibre(r));
   const toutFait = aFaire.length > 0 && aFaire.every((r) => faitesAujourdhui.some((x) => x.rubrique === r));
   const repos = regles.repos.includes(jourDeLaSemaine(aujourdhui));
   // La séance du jour est déjà passée dans la classe de base : on prend celle qui vient d'être faite.

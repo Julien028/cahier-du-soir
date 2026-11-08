@@ -4,13 +4,14 @@
 import { api } from "./api.js";
 import { $, esc, avatar, pluriel, confettis, annonce } from "./outils.js";
 import { derouler } from "./seance.js";
-import { THEMES, PALIERS, classe, nomRubrique } from "./regles.js";
+import { THEMES, PALIERS, classe, nomRubrique, estLibre } from "./regles.js";
 import { onglets, qui, deconnecter } from "./app.js";
 import { vuePeche } from "./peche.js";
+import { vueCatechisme } from "./catechisme.js";
 
 const programmes = {};
 async function programme(code) {
-  if (code === "peche") return null; // la pêche n'est pas un programme de classe (voir peche.js)
+  if (estLibre(code)) return null; // la pêche et le catéchisme ne sont pas des programmes de classe
   if (!(code in programmes)) programmes[code] = (await import(`/programmes/${code}.js`).catch(() => null))?.programme || null;
   return programmes[code];
 }
@@ -28,7 +29,7 @@ export async function espaceEnfant(app, moi) {
     qui.innerHTML = `${avatar(T.enfant.prenom, T.enfant.couleur)}<span><b>${esc(T.enfant.prenom)}</b>${T.enfant.classe ? " · " + esc(classe(T.enfant.classe)?.nom || "") : ""}</span>
       <button class="lien" id="sortir">Changer d'enfant</button>`;
     $("#sortir").onclick = deconnecter;
-    onglets.innerHTML = [["soir", "Ce soir"], ...(T.enfant.rubriques.includes("peche") ? [["peche", "La pêche"]] : []), ["badges", "Mes badges"], ["programme", "Mon programme"]]
+    onglets.innerHTML = [["soir", "Ce soir"], ...(T.enfant.rubriques.includes("peche") ? [["peche", "La pêche"]] : []), ...(T.enfant.rubriques.includes("catechisme") ? [["catechisme", "Catéchisme"]] : []), ["badges", "Mes badges"], ["programme", "Mon programme"]]
       .map(([v, nom]) => `<button class="onglet" role="tab" aria-selected="${v === vue}" data-vue="${v}">${nom}</button>`).join("");
     onglets.querySelectorAll(".onglet").forEach((b) => (b.onclick = async () => { vue = b.dataset.vue; await charger().catch(() => {}); afficher(); }));
   };
@@ -38,6 +39,7 @@ export async function espaceEnfant(app, moi) {
     if (vue === "badges") return vueBadges();
     if (vue === "programme") return vueProgramme();
     if (vue === "peche") return vuePeche(app, moi, feter);
+    if (vue === "catechisme") return vueCatechisme(app, moi, feter, { classe: T.enfant.classe });
     return vueSoir();
   };
 
@@ -58,10 +60,14 @@ export async function espaceEnfant(app, moi) {
   // --- Ce soir.
   function vueSoir() {
     const nonLus = T.mots.filter((m) => !m.lu_le);
-    const toutFait = T.rubriques.every((r) => r.code === "peche" || r.faiteAujourdhui || !programmes[r.code]);
+    const toutFait = T.rubriques.every((r) => estLibre(r.code) || r.faiteAujourdhui || !programmes[r.code]);
     const finDuSoir = toutFait && T.erreurs.aRevoir === 0;
     const cartes = T.rubriques.map((r) => {
       const p = programmes[r.code];
+      if (r.code === "catechisme") return `<div class="carte"><h2>✝️ Le catéchisme</h2>
+        <p class="notion">${T.catechisme.chapitres} chapitre${T.catechisme.chapitres > 1 ? "s" : ""} validé${T.catechisme.chapitres > 1 ? "s" : ""} · ${T.catechisme.prieres} prière${T.catechisme.prieres > 1 ? "s" : ""} sue${T.catechisme.prieres > 1 ? "s" : ""}.</p>
+        <p class="muet">À ton rythme, quand tu veux. Chaque chapitre validé ou prière sue : +5 ⭐.</p>
+        <button class="cta sec" id="ouvrir-cate">Ouvrir le catéchisme</button></div>`;
       if (r.code === "peche") return `<div class="carte"><h2>🎣 La pêche</h2>
         <p class="notion">${T.peche.chapitres} chapitre${T.peche.chapitres > 1 ? "s" : ""} validé${T.peche.chapitres > 1 ? "s" : ""} sur 7 · ${T.peche.prises} prise${T.peche.prises > 1 ? "s" : ""} dans ton carnet.</p>
         <p class="muet">Quand tu veux, pas forcément ce soir. Chaque chapitre validé : +5 ⭐.</p>
@@ -118,6 +124,7 @@ export async function espaceEnfant(app, moi) {
     app.querySelectorAll("[data-seance]").forEach((b) => (b.onclick = () => seance(b.dataset.seance)));
     if ($("#erreurs")) $("#erreurs").onclick = revoirErreurs;
     if ($("#ouvrir-peche")) $("#ouvrir-peche").onclick = () => { vue = "peche"; afficher(); };
+    if ($("#ouvrir-cate")) $("#ouvrir-cate").onclick = () => { vue = "catechisme"; afficher(); };
     if ($("#defi")) $("#defi").onclick = defi;
     if ($("#mission")) $("#mission").onclick = async () => {
       const g = await api(`enfants/${moi.id}/mission`, { methode: "POST", corps: {} }).catch((e) => alert(e.message));

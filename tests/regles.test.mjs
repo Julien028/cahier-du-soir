@@ -60,3 +60,20 @@ test("règles des parents et classe au-dessus", async () => {
   assert.equal(classeSuivante("3e"), null);
   assert.equal(jourDeLaSemaine("2026-10-08"), 4); // un jeudi
 });
+
+test("année liturgique : Pâques, Avent, temps", async () => {
+  const L = await import("../public/js/liturgie.js");
+  const iso = (d) => d.toISOString().slice(0, 10);
+  assert.equal(iso(L.paques(2026)), "2026-04-05");
+  assert.equal(iso(L.paques(2027)), "2027-03-28");
+  assert.equal(iso(L.avent(2026)), "2026-11-29");
+  assert.equal(iso(L.avent(2028)), "2028-12-03");
+  assert.equal(L.tempsDe("2026-12-01"), "avent");
+  assert.equal(L.tempsDe("2026-12-25"), "noel");
+  assert.equal(L.tempsDe("2027-02-10"), "careme");
+  assert.equal(L.tempsDe("2027-05-16"), "paques");
+  assert.equal(L.tempsDe("2027-07-01"), "ordinaire");
+  assert.equal(L.dateFete("paques+49", 2027), "2027-05-16");
+  const f = L.fetesAVenir([{ nom: "Noël", date: "12-25" }, { nom: "Pâques", date: "paques" }], "2026-12-26");
+  assert.equal(f[0].nom, "Pâques"); assert.equal(f[1].jour, "2027-12-25");
+});

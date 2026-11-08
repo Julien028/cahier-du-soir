@@ -109,3 +109,9 @@ choix des rubriques d'un enfant, onglet Rubriques de l'administrateur, tests (`t
    `tests/verifier-programme.mjs` (forme, exactitude des réponses, au moins 300 énoncés différents).
 4. Cours d'anglais en 4 niveaux (`anglais-1` à `anglais-4`) : leçon de la semaine (`lecon`) et questions
    à écouter (`audio`, lues par la voix du navigateur). **En ligne depuis le 08/10/2026.**
+5. Défi du niveau au-dessus et règles des parents (défi, mission, jours de repos). **En ligne.**
+6. Catéchisme catholique, à son rythme (rubrique libre `catechisme`, écran `public/js/catechisme.js`,
+   contenu `public/programmes/catechisme.js`) : 5 étapes (éveil, découvrir Jésus, première communion,
+   profession de foi, confirmation), 56 chapitres avec quiz, 10 prières à apprendre, fêtes et temps
+   liturgiques calculés (`public/js/liturgie.js`). Progrès dans la table `parcours`. **En ligne le 08/11/2026.**
+   À faire relire par un prêtre ou un catéchiste (voir la liste dans l'historique git du 08/11/2026).

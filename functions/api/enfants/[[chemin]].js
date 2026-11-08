@@ -1,7 +1,7 @@
 import { json, erreur, corpsJson, aujourdhui, ajouterJours } from "../../../src/outils.js";
 import { exiger, journal } from "../../../src/session.js";
 import { peutVoir, tableau, bilanBadges, totalEtoiles, etatDefi } from "../../../src/enfants.js";
-import { etoilesSeance, GAINS, badgesGagnes, grade, cycleDe, missionDuJour, DELAI_ERREUR, THEMES, lireRegles, jourDeLaSemaine } from "../../../public/js/regles.js";
+import { etoilesSeance, GAINS, badgesGagnes, grade, cycleDe, missionDuJour, DELAI_ERREUR, THEMES, lireRegles, jourDeLaSemaine, estLibre } from "../../../public/js/regles.js";
 
 // Tout ce qui concerne un enfant, sous /api/enfants/:id/…
 //   GET   :id                       tableau de bord (enfant, ses parents, l'administrateur)
@@ -42,7 +42,7 @@ export async function onRequest(contexte) {
       if (!lui) return erreur(403, "Seul l'enfant fait sa séance.");
       if (repos) return erreur(409, "Aujourd'hui, c'est jour de repos : pas de cahier !");
       const rubrique = String(corps.rubrique || "");
-      if (!rubriques.includes(rubrique) || rubrique === "peche") return erreur(400, "Rubrique inconnue.");
+      if (!rubriques.includes(rubrique) || estLibre(rubrique)) return erreur(400, "Rubrique inconnue.");
       const score = Number(corps.score), total = Number(corps.total);
       if (!Number.isInteger(score) || !Number.isInteger(total) || total < 1 || total > 20 || score < 0 || score > total) return erreur(400, "Résultat illisible.");
       const deja = await env.DB.prepare("SELECT 1 FROM seances WHERE enfant_id = ? AND rubrique = ? AND date = ? AND importe = 0")
@@ -163,7 +163,7 @@ export async function onRequest(contexte) {
       if (!adulte) return erreur(403, "Réservé aux parents.");
       const rubrique = String(corps.rubrique || "");
       const semaine = Number(corps.semaine), j = Number(corps.jour);
-      if (!rubriques.includes(rubrique) || rubrique === "peche") return erreur(400, "Rubrique inconnue.");
+      if (!rubriques.includes(rubrique) || estLibre(rubrique)) return erreur(400, "Rubrique inconnue.");
       if (!Number.isInteger(semaine) || semaine < 1 || semaine > 36 || !Number.isInteger(j) || j < 0 || j > 5) return erreur(400, "Semaine ou séance illisible.");
       await env.DB.batch([
         env.DB.prepare(`INSERT INTO progression (enfant_id, rubrique, semaine, jour) VALUES (?,?,?,?)
@@ -265,6 +265,31 @@ export async function onRequest(contexte) {
       await env.DB.prepare("INSERT INTO peche_sac (enfant_id, coches) VALUES (?,?) ON CONFLICT(enfant_id) DO UPDATE SET coches = excluded.coches")
         .bind(enfant.id, JSON.stringify(coches)).run();
       return json({ ok: true });
+    }
+
+    // --- Les parcours à son rythme (catéchisme…) : chapitres validés et prières sues.
+    case "GET parcours/catechisme": {
+      const { results } = await env.DB.prepare("SELECT cle, meilleur, reussi FROM parcours WHERE enfant_id = ? AND rubrique = 'catechisme'").bind(enfant.id).all();
+      return json(results.map((x) => ({ ...x, reussi: !!x.reussi })));
+    }
+
+    case "POST parcours/catechisme": {
+      if (!lui) return erreur(403, "Seul l'enfant fait ses quiz.");
+      if (!rubriques.includes("catechisme")) return erreur(400, "Le catéchisme n'est pas ouvert.");
+      const cle = String(corps.cle || "").slice(0, 80);
+      const score = Number(corps.score), total = Number(corps.total);
+      if (!/^[a-z0-9:-]{2,80}$/.test(cle) || !Number.isInteger(score) || !Number.isInteger(total) || total < 1 || total > 20 || score < 0 || score > total) return erreur(400, "Résultat illisible.");
+      const avant = await env.DB.prepare("SELECT reussi FROM parcours WHERE enfant_id = ? AND rubrique = 'catechisme' AND cle = ?").bind(enfant.id, cle).first();
+      const reussi = score >= Math.ceil(total * 0.8);
+      const ordres = [env.DB.prepare(`INSERT INTO parcours (enfant_id, rubrique, cle, meilleur, reussi) VALUES (?, 'catechisme', ?, ?, ?)
+        ON CONFLICT(enfant_id, rubrique, cle) DO UPDATE SET meilleur = MAX(meilleur, excluded.meilleur), reussi = MAX(reussi, excluded.reussi)`)
+        .bind(enfant.id, cle, score, reussi ? 1 : 0)];
+      if (!reussi || avant?.reussi) { await env.DB.batch(ordres); return json({ gain: 0, reussi }); }
+      const badgesAvant = badgesGagnes(await bilanBadges(env, enfant.id));
+      const totalAvant = await totalEtoiles(env, enfant.id);
+      ordres.push(env.DB.prepare("INSERT INTO etoiles (enfant_id, date, nombre, raison) VALUES (?,?,?,?)").bind(enfant.id, jour, GAINS.chapitreParcours, "catechisme"));
+      await env.DB.batch(ordres);
+      return json({ ...(await apresGain(env, enfant, badgesAvant, totalAvant, GAINS.chapitreParcours)), reussi });
     }
 
     case "POST reprise":

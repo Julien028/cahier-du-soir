@@ -5,6 +5,7 @@ import { $, esc } from "./outils.js";
 import { derouler } from "./seance.js";
 import { CLASSES, RUBRIQUES_PRETES, RUBRIQUES_LIBRES, RUBRIQUES_EN, RUBRIQUES_ANGLAIS } from "./regles.js";
 import { vuePeche } from "./peche.js";
+import { vueCatechisme } from "./catechisme.js";
 
 const programmes = {};
 async function programme(code) {
@@ -35,6 +36,7 @@ export function vueRubriques(app) {
 // Une rubrique hors classe : pour l'instant la pêche, en aperçu.
 async function vueLibre(app, code) {
   if (code === "peche") await vuePeche(app, null, null, "apprendre", () => vueRubriques(app));
+  if (code === "catechisme") await vueCatechisme(app, null, null, { retour: () => vueRubriques(app) });
 }
 
 // Une classe : choisir une semaine et une séance, l'essayer ; voir tout le programme.

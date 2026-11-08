@@ -177,3 +177,16 @@ CREATE TABLE IF NOT EXISTS peche_sac (
   enfant_id INTEGER PRIMARY KEY REFERENCES comptes(id),
   coches    TEXT NOT NULL DEFAULT '[]'
 );
+
+-- Les parcours « à son rythme » autres que la pêche (le catéchisme…), ajouté le 08/11/2026 :
+-- un chapitre validé (quiz réussi) ou une prière sue, par enfant. cle = clé du chapitre,
+-- ou « priere:<clé> » pour une prière.
+CREATE TABLE IF NOT EXISTS parcours (
+  enfant_id INTEGER NOT NULL REFERENCES comptes(id),
+  rubrique  TEXT NOT NULL,
+  cle       TEXT NOT NULL,
+  meilleur  INTEGER NOT NULL DEFAULT 0,
+  reussi    INTEGER NOT NULL DEFAULT 0,
+  quand     TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (enfant_id, rubrique, cle)
+);

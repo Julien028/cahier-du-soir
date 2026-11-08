@@ -111,3 +111,6 @@ figcaption{font-size:14px;color:var(--encre-clair);margin-top:8px;text-align:cen
 .famille-groupe>summary{cursor:pointer;padding:14px 4px;font-family:"Fraunces",serif;font-weight:800;font-size:19px}
 .famille-groupe[open]>summary{border-bottom:1px solid var(--seyes-fort);margin-bottom:10px}
 .famille-groupe>details.carte{margin-bottom:10px}
+
+/* --- Catéchisme : le texte d'une prière. */
+blockquote.priere{margin:14px 0;padding:14px 18px;border-left:5px solid #C9A227;background:#FFF9E8;border-radius:8px;font-family:"Fraunces",Georgia,serif;font-size:19px;line-height:1.6}

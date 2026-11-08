@@ -223,3 +223,18 @@ assert.equal((await cR.appel(`enfants/${enfR.id}/mission`, "POST", {})).statut, 
 assert.equal((await cR.appel(`enfants/${enfR.id}/regles`, "PUT", { defi: true })).statut, 403, "l'enfant ne change pas ses règles");
 assert.equal((await p1.appel(`enfants/${enfR.id}/regles`, "PUT", { defi: true })).statut, 404, "ni un parent d'une autre famille");
 console.log("Défi et règles : tout est bon.");
+
+// --- Catéchisme : chapitre validé (+5 une fois), prière sue, fermé si la rubrique n'est pas cochée.
+const enfC = ok(await admin.appel("comptes", "POST", { role: "enfant", prenom: `Cate${suffixe}`, classe: "cm1", rubriques: ["cm1", "catechisme"] }), "enfant catéchisme");
+const cc = client(); ok(await cc.connexion(enfC.identifiant, enfC.code), "connexion");
+assert.equal(ok(await cc.appel(`enfants/${enfC.id}/parcours/catechisme`, "POST", { cle: "communion-1", score: 3, total: 5 }), "quiz raté").gain, 0);
+const qc = ok(await cc.appel(`enfants/${enfC.id}/parcours/catechisme`, "POST", { cle: "communion-1", score: 5, total: 5 }), "quiz réussi");
+assert.equal(qc.gain, 5); assert.ok(qc.nouveauxBadges.includes("cate1"));
+assert.equal(ok(await cc.appel(`enfants/${enfC.id}/parcours/catechisme`, "POST", { cle: "communion-1", score: 5, total: 5 }), "refait").gain, 0, "pas deux fois");
+ok(await cc.appel(`enfants/${enfC.id}/parcours/catechisme`, "POST", { cle: "priere:notre-pere", score: 4, total: 5 }), "prière");
+const TC = ok(await cc.appel(`enfants/${enfC.id}`), "tableau");
+assert.deepEqual(TC.catechisme, { chapitres: 1, prieres: 1 }); assert.equal(TC.etoiles, 10);
+assert.equal(ok(await cc.appel(`enfants/${enfC.id}/parcours/catechisme`), "liste").length, 2);
+assert.equal((await cc.appel(`enfants/${enfC.id}/seances`, "POST", { rubrique: "catechisme", matiere: "m", score: 1, total: 1 })).statut, 400, "pas de séance du soir");
+assert.equal((await cR.appel(`enfants/${enfR.id}/parcours/catechisme`, "POST", { cle: "eveil-1", score: 5, total: 5 })).statut, 400, "catéchisme fermé");
+console.log("Catéchisme : tout est bon.");

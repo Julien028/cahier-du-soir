@@ -30,7 +30,8 @@ export const RUBRIQUES_ANGLAIS = [
   { code: "anglais-4", nom: "Anglais · niveau 4 (4e-3e)" },
 ];
 // Les rubriques qui ne sont pas une classe : lues quand on veut, sans séance du soir.
-export const RUBRIQUES_LIBRES = [{ code: "peche", nom: "La pêche" }];
+export const RUBRIQUES_LIBRES = [{ code: "peche", nom: "La pêche" }, { code: "catechisme", nom: "Le catéchisme" }];
+export const estLibre = (code) => RUBRIQUES_LIBRES.some((r) => r.code === code);
 // Toutes les rubriques qui ont un programme à séances (public/programmes/<code>.js).
 export const rubriquesASeances = () => [...RUBRIQUES_PRETES, ...RUBRIQUES_EN.map((r) => r.code), ...RUBRIQUES_ANGLAIS.map((r) => r.code)];
 export const nomRubrique = (code) =>
@@ -46,6 +47,7 @@ export const GAINS = {
   mission: 2,          // la mission sans écran du jour, faite
   // Le défi du niveau au-dessus rapporte comme une séance : +1 par bonne réponse, +3 si sans faute.
   chapitrePeche: 5,    // un chapitre de pêche validé (quiz réussi), la première fois
+  chapitreParcours: 5, // un chapitre de catéchisme validé, ou une prière sue, la première fois
 };
 export const etoilesSeance = (score, total) =>
   score * GAINS.bonneReponse + (total > 0 && score === total ? GAINS.sansFaute : 0);
@@ -146,6 +148,9 @@ export const BADGES = [
   { code: "prise1", nom: "Première prise", texte: "Noter un poisson dans son carnet de pêche", icone: "🎣", f: (b) => b.prises >= 1 },
   { code: "peche3", nom: "Apprenti pêcheur", texte: "Valider 3 chapitres de pêche", icone: "🐟", f: (b) => b.chapitresPeche >= 3 },
   { code: "peche7", nom: "Pêcheur confirmé", texte: "Valider les 7 chapitres de pêche", icone: "🐋", f: (b) => b.chapitresPeche >= 7 },
+  { code: "cate1", nom: "Premier pas dans la foi", texte: "Valider un chapitre du catéchisme", icone: "🕊️", f: (b) => b.chapitresCate >= 1 },
+  { code: "cate10", nom: "Disciple", texte: "Valider 10 chapitres du catéchisme", icone: "📖", f: (b) => b.chapitresCate >= 10 },
+  { code: "prieres3", nom: "Je sais mes prières", texte: "Savoir par cœur 3 prières", icone: "🙏", f: (b) => b.prieres >= 3 },
   { code: "etoiles100", nom: "100 étoiles", texte: "Gagner 100 étoiles", icone: "⭐", f: (b) => b.etoiles >= 100 },
   { code: "etoiles500", nom: "500 étoiles", texte: "Gagner 500 étoiles", icone: "🌟", f: (b) => b.etoiles >= 500 },
   { code: "annee", nom: "L'année entière", texte: "Atteindre la semaine 36", icone: "🏆", f: (b) => b.semaineMax >= 36 },
